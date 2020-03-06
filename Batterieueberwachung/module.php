@@ -240,8 +240,8 @@ class Batterieueberwachung extends IPSModule
         // Visibility
         $this->RegisterPropertyBoolean('EnableMonitoring', true);
         $this->RegisterPropertyBoolean('EnableStatus', true);
-        $this->RegisterPropertyBoolean('EnableBatteryList', true);
         $this->RegisterPropertyBoolean('EnableBatteryReplacement', true);
+        $this->RegisterPropertyBoolean('EnableBatteryList', true);
         $this->RegisterPropertyBoolean('CreateLinks', false);
         $this->RegisterPropertyInteger('LinkCategory', 0);
 
@@ -319,13 +319,14 @@ class Batterieueberwachung extends IPSModule
         // Status
         $profile = 'BAT.' . $this->InstanceID . '.Status';
         $this->RegisterVariableBoolean('Status', 'Status', $profile, 1);
-        // Overview
-        $this->RegisterVariableString('BatteryList', 'Batterieliste', 'HTMLBox', 2);
-        IPS_SetIcon($this->GetIDForIdent('BatteryList'), 'Battery');
         // Battery replacement
-        $this->RegisterVariableInteger('BatteryReplacement', 'Batteriewechsel ID', '', 3);
+        $this->RegisterVariableInteger('BatteryReplacement', 'Batteriewechsel ID', '', 2);
         $this->EnableAction('BatteryReplacement');
         IPS_SetIcon($this->GetIDForIdent('BatteryReplacement'), 'Gear');
+        // Battery list
+        $this->RegisterVariableString('BatteryList', 'Batterieliste', 'HTMLBox', 3);
+        IPS_SetIcon($this->GetIDForIdent('BatteryList'), 'Battery');
+
     }
 
     private function SetOptions(): void

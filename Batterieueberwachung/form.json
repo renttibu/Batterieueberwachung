@@ -62,13 +62,13 @@
         },
         {
           "type": "CheckBox",
-          "name": "EnableBatteryList",
-          "caption": "Batterieliste"
+          "name": "EnableBatteryReplacement",
+          "caption": "Batteriewechsel"
         },
         {
           "type": "CheckBox",
-          "name": "EnableBatteryReplacement",
-          "caption": "Batteriewechsel"
+          "name": "EnableBatteryList",
+          "caption": "Batterieliste"
         },
         {
           "type": "RowLayout",
