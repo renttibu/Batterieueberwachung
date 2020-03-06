@@ -326,7 +326,6 @@ class Batterieueberwachung extends IPSModule
         // Battery list
         $this->RegisterVariableString('BatteryList', 'Batterieliste', 'HTMLBox', 3);
         IPS_SetIcon($this->GetIDForIdent('BatteryList'), 'Battery');
-
     }
 
     private function SetOptions(): void
@@ -335,14 +334,14 @@ class Batterieueberwachung extends IPSModule
         IPS_SetHidden($this->GetIDForIdent('Monitoring'), !$this->ReadPropertyBoolean('EnableMonitoring'));
         // Status
         IPS_SetHidden($this->GetIDForIdent('Status'), !$this->ReadPropertyBoolean('EnableStatus'));
+        // Battery replacement
+        IPS_SetHidden($this->GetIDForIdent('BatteryReplacement'), !$this->ReadPropertyBoolean('EnableBatteryReplacement'));
         // Battery list
         $useBatteryList = $this->ReadPropertyBoolean('EnableBatteryList');
         if ($useBatteryList) {
             $this->UpdateBatteryList();
         }
         IPS_SetHidden($this->GetIDForIdent('BatteryList'), !$useBatteryList);
-        // Battery replacement
-        IPS_SetHidden($this->GetIDForIdent('BatteryReplacement'), !$this->ReadPropertyBoolean('EnableBatteryReplacement'));
     }
 
     private function UnregisterMessages(): void
