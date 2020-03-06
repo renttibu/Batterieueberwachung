@@ -1,0 +1,12 @@
+{
+    "id": "{33FD5726-16B7-67D3-7E09-3AEC76466CB8}",
+    "author": "Ulrich Bittner",
+    "name": "Batterieueberwachung",
+    "url": "https://github.com/ubittner/Batterieueberwachung",
+    "compatibility": {
+        "version": "5.2"
+    },
+    "version": "4.0",
+    "build": 1,
+    "date": 1583514000
+}

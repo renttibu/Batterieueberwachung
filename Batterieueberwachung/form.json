@@ -1,0 +1,666 @@
+{
+  "elements": [
+    {
+      "type": "ExpansionPanel",
+      "caption": "Instanzinformationen",
+      "items": [
+        {
+          "type": "Image",
+          "image": "data:image/png;base64,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"
+        },
+        {
+          "type": "Label",
+          "caption": "Ein Gemeinschaftsprojekt von Normen Thiel und Ulrich Bittner\n"
+        },
+        {
+          "type": "Label",
+          "caption": "Mit dieser Instanz können Batterien überwacht werden.\nWeitere Informationen entnehmen Sie bitte der Dokumentation.\n"
+        },
+        {
+          "type": "Label",
+          "caption": "Symcon Version:\t5.2>"
+        },
+        {
+          "type": "Label",
+          "caption": "Name:\t\t\tBatterieueberwachung"
+        },
+        {
+          "type": "Label",
+          "caption": "Version:\t\t\t4.00-1"
+        },
+        {
+          "type": "Label",
+          "caption": "Datum:\t\t\t06. März 2020"
+        },
+        {
+          "type": "Label",
+          "caption": "Uhrzeit:\t\t\t18:00"
+        },
+        {
+          "type": "Label",
+          "caption": "Entwickler:\t\tUlrich Bittner"
+        },
+        {
+          "type": "Label",
+          "caption": "Präfix:\t\t\tBAT"
+        }
+      ]
+    },
+    {
+      "type": "ExpansionPanel",
+      "caption": "Anzeigeoptionen",
+      "items": [
+        {
+          "type": "CheckBox",
+          "name": "EnableMonitoring",
+          "caption": "Überwachung"
+        },
+        {
+          "type": "CheckBox",
+          "name": "EnableStatus",
+          "caption": "Status"
+        },
+        {
+          "type": "CheckBox",
+          "name": "EnableBatteryList",
+          "caption": "Batterieliste"
+        },
+        {
+          "type": "CheckBox",
+          "name": "EnableBatteryReplacement",
+          "caption": "Batteriewechsel"
+        },
+        {
+          "type": "RowLayout",
+          "items": [
+            {
+              "type": "CheckBox",
+              "name": "CreateLinks",
+              "caption": "Variablenverknüpfungen"
+            },
+            {
+              "type": "Label",
+              "caption": " "
+            },
+            {
+              "type": "SelectCategory",
+              "name": "LinkCategory",
+              "caption": "Kategorie"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "ExpansionPanel",
+      "caption": "Batterieliste",
+      "items": [
+        {
+          "type": "Label",
+          "caption": "Bitte fügen Sie die zu überwachenden Variablen hinzu:"
+        },
+        {
+          "type": "List",
+          "name": "MonitoredVariables",
+          "caption": "Überwachte Variablen",
+          "rowCount": 25,
+          "add": true,
+          "delete": true,
+          "sort": {
+            "column": "Name",
+            "direction": "ascending"
+          },
+          "columns": [
+            {
+              "caption": "Aktiviert",
+              "name": "Use",
+              "width": "100px",
+              "add": true,
+              "edit": {
+                "type": "CheckBox"
+              }
+            },
+            {
+              "name": "ID",
+              "caption": "Variable",
+              "width": "400px",
+              "add": 0,
+              "edit": {
+                "type": "SelectVariable"
+              }
+            },
+            {
+              "name": "Name",
+              "caption": "Name",
+              "width": "350px",
+              "add": "",
+              "edit": {
+                "type": "ValidationTextBox"
+              }
+            },
+            {
+              "name": "Address",
+              "caption": "Addresse",
+              "width": "250px",
+              "add": "",
+              "edit": {
+                "type": "ValidationTextBox"
+              }
+            },
+            {
+              "caption": "Auslösender Wert",
+              "name": "AlertingValue",
+              "width": "150px",
+              "add": 1,
+              "edit": {
+                "type": "Select",
+                "options": [
+                  {
+                    "caption": "0 - false",
+                    "value": 0
+                  },
+                  {
+                    "caption": "1 - true",
+                    "value": 1
+                  }
+                ]
+              }
+            },
+            {
+              "name": "BatteryReplacement",
+              "caption": "",
+              "width": "30px",
+              "onClick": "BAT_UpdateBatteryReplacementDate($id, $MonitoredVariables['ID']);",
+              "add": "\uD83D\uDD0B️"
+            },
+            {
+              "caption": "Letzter Batteriewechsel",
+              "name": "LastBatteryReplacementDate",
+              "width": "200px",
+              "add": "{\"year\":0,\"month\":0,\"day\":0}",
+              "edit": {
+                "type": "SelectDate"
+              }
+            }
+          ]
+        },
+        {
+          "type": "Label",
+          "caption": "gelb\t= Batterie schwach\nrot\t\t= Fehler"
+        }
+      ]
+    },
+    {
+      "type": "ExpansionPanel",
+      "caption": "Benachrichtigung",
+      "items": [
+        {
+          "type": "ValidationTextBox",
+          "name": "Location",
+          "caption": "Standortbezeichnung"
+        },
+        {
+          "type": "Label",
+          "caption": " "
+        },
+        {
+          "type": "SelectInstance",
+          "name": "NotificationCenter",
+          "caption": "Benachrichtigungszentrale"
+        },
+        {
+          "type": "Label",
+          "caption": " "
+        },
+        {
+          "type": "Label",
+          "caption": "Sofortige Benachrichtigung"
+        },
+        {
+          "type": "RowLayout",
+          "items": [
+            {
+              "type": "CheckBox",
+              "name": "ImmediateNotification",
+              "caption": "Sofortige Benachrichtigung verwenden"
+            },
+            {
+              "type": "CheckBox",
+              "name": "ImmediateNotificationOnlyWeakBattery",
+              "caption": "Nur Batterie schwach"
+            }
+          ]
+        },
+        {
+          "type": "RowLayout",
+          "items": [
+            {
+              "type": "CheckBox",
+              "name": "ImmediateNotificationUsePushNotification",
+              "caption": "Push"
+            },
+            {
+              "type": "Label",
+              "caption": " "
+            },
+            {
+              "type": "CheckBox",
+              "name": "ImmediateNotificationUseEmailNotification",
+              "caption": "E-Mail"
+            },
+            {
+              "type": "Label",
+              "caption": " "
+            },
+            {
+              "type": "CheckBox",
+              "name": "ImmediateNotificationUseSMSNotification",
+              "caption": "SMS"
+            }
+          ]
+        },
+        {
+          "type": "Label",
+          "caption": " "
+        },
+        {
+          "type": "Label",
+          "caption": "Tagesbericht"
+        },
+        {
+          "type": "RowLayout",
+          "items": [
+            {
+              "type": "CheckBox",
+              "name": "DailyReport",
+              "caption": "Tagesbericht verwenden"
+            },
+            {
+              "type": "Label",
+              "caption": " "
+            },
+            {
+              "type": "CheckBox",
+              "name": "DailyReportOnlyWeakBattery",
+              "caption": "Nur Batterie schwach"
+            }
+          ]
+        },
+        {
+          "type": "RowLayout",
+          "items": [
+            {
+              "type": "CheckBox",
+              "name": "DailyReportUsePushNotification",
+              "caption": "Push"
+            },
+            {
+              "type": "Label",
+              "caption": " "
+            },
+            {
+              "type": "CheckBox",
+              "name": "DailyReportUseEmailNotification",
+              "caption": "E-Mail"
+            },
+            {
+              "type": "Label",
+              "caption": " "
+            },
+            {
+              "type": "CheckBox",
+              "name": "DailyReportUseSMSNotification",
+              "caption": "SMS"
+            }
+          ]
+        },
+        {
+          "type": "SelectTime",
+          "name": "DailyReportTime",
+          "caption": "Uhrzeit"
+        },
+        {
+          "type": "Label",
+          "caption": " "
+        },
+        {
+          "type": "Label",
+          "caption": "Wochenbericht"
+        },
+        {
+          "type": "RowLayout",
+          "items": [
+            {
+              "type": "CheckBox",
+              "name": "WeeklyReport",
+              "caption": "Wochenbericht verwenden"
+            },
+            {
+              "type": "CheckBox",
+              "name": "WeeklyReportOnlyWeakBattery",
+              "caption": "Nur Batterie schwach"
+            }
+          ]
+        },
+        {
+          "type": "RowLayout",
+          "items": [
+            {
+              "type": "CheckBox",
+              "name": "WeeklyReportUsePushNotification",
+              "caption": "Push"
+            },
+            {
+              "type": "Label",
+              "caption": " "
+            },
+            {
+              "type": "CheckBox",
+              "name": "WeeklyReportUseEmailNotification",
+              "caption": "E-Mail"
+            },
+            {
+              "type": "Label",
+              "caption": " "
+            },
+            {
+              "type": "CheckBox",
+              "name": "WeeklyReportUseSMSNotification",
+              "caption": "SMS"
+            }
+          ]
+        },
+        {
+          "type": "RowLayout",
+          "items": [
+            {
+              "type": "Select",
+              "name": "WeeklyReportDay",
+              "caption": "Wochentag",
+              "options": [
+                {
+                  "caption": "0 - Sonntag",
+                  "value": 0
+                },
+                {
+                  "caption": "1 - Montag",
+                  "value": 1
+                },
+                {
+                  "caption": "2 - Dienstag",
+                  "value": 2
+                },
+                {
+                  "caption": "3 - Mittwoch",
+                  "value": 3
+                },
+                {
+                  "caption": "4 - Donnerstag",
+                  "value": 4
+                },
+                {
+                  "caption": "5 - Freitag",
+                  "value": 5
+                },
+                {
+                  "caption": "6 - Samstag",
+                  "value": 6
+                }
+              ]
+            },
+            {
+              "type": "Label",
+              "caption": " "
+            },
+            {
+              "type": "SelectTime",
+              "name": "WeeklyReportTime",
+              "caption": "Uhrzeit"
+            }
+          ]
+        },
+        {
+          "type": "Label",
+          "caption": " "
+        },
+        {
+          "type": "SelectScript",
+          "name": "NotificationScript",
+          "caption": "Skript (Ausführung bei Statusänderung)"
+        },
+        {
+          "type": "Label",
+          "caption": "Parameter: $_IPS['MonitoringStatus'] (false = OK, true = Alarm)"
+        }
+      ]
+    },
+    {
+      "type": "ExpansionPanel",
+      "caption": "Registrierte Nachrichten",
+      "items": [
+        {
+          "type": "List",
+          "name": "RegisteredMessages",
+          "caption": "Registrierte Nachrichten",
+          "rowCount": 10,
+          "sort": {
+            "column": "ParentName",
+            "direction": "ascending"
+          },
+          "columns": [
+            {
+              "caption": "Bezeichnung",
+              "name": "ParentName",
+              "width": "350px"
+            },
+            {
+              "caption": "Sender ID",
+              "name": "SenderID",
+              "width": "150px"
+            },
+            {
+              "caption": "Sender Name",
+              "name": "SenderName",
+              "width": "250px"
+            },
+            {
+              "caption": "Nachrichten ID",
+              "name": "MessageID",
+              "width": "150px"
+            },
+            {
+              "caption": "Nachrichten Bezeichnung",
+              "name": "MessageDescription",
+              "width": "250px"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "type": "ExpansionPanel",
+      "caption": "Konfiguration",
+      "items": [
+        {
+          "type": "Button",
+          "caption": "Konfiguration neu einlesen",
+          "onClick": "BAT_ReloadConfiguration($id);"
+        }
+      ]
+    },
+    {
+      "type": "ExpansionPanel",
+      "caption": "Variablen",
+      "items": [
+        {
+          "type": "PopupButton",
+          "caption": "Homematic Variablen automatisch ermitteln",
+          "popup": {
+            "caption": "Homematic Variablen wirklich automatisch ermitteln?",
+            "items": [
+              {
+                "type": "Button",
+                "caption": "Variablen ermitteln",
+                "onClick": "BAT_DetermineVariables($id);"
+              }
+            ]
+          }
+        },
+        {
+          "type": "PopupButton",
+          "caption": "Profile zuweisen",
+          "popup": {
+            "caption": "Variablenprofile wirklich zuweisen?",
+            "items": [
+              {
+                "type": "Button",
+                "caption": "Variablenprofile zuweisen",
+                "onClick": "BAT_AssignVariableProfile($id, true);"
+              }
+            ]
+          }
+        },
+        {
+          "type": "PopupButton",
+          "caption": "Verknüpfungen erstellen",
+          "popup": {
+            "caption": "Variablenverknüpfungen wirklich erstellen?",
+            "items": [
+              {
+                "type": "Button",
+                "caption": "Variablenverknüpfungen erstellen",
+                "onClick": "BAT_CreateVariableLinks($id);"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "type": "ExpansionPanel",
+      "caption": "Tagesbericht",
+      "items": [
+        {
+          "type": "RowLayout",
+          "items": [
+            {
+              "type": "PopupButton",
+              "caption": "Versenden",
+              "popup": {
+                "caption": "Tagesbericht wirklich versenden?",
+                "items": [
+                  {
+                    "type": "Button",
+                    "caption": "Tagesbericht versenden",
+                    "onClick": "BAT_TriggerDailyReport($id, false); echo 'Der Tagesbericht wurde versendet!';"
+                  }
+                ]
+              }
+            },
+            {
+              "type": "PopupButton",
+              "caption": "Zurücksetzen",
+              "popup": {
+                "caption": "Tagesbericht wirklich zurücksetzen?",
+                "items": [
+                  {
+                    "type": "Button",
+                    "caption": "Tagesbericht zurücksetzen",
+                    "onClick": "BAT_ResetDailyReportAttribute($id); echo 'Der Tagesbericht wurde zurückgesetzt!';"
+                  }
+                ]
+              }
+            },
+            {
+              "type": "Button",
+              "caption": "Anzeigen",
+              "onClick": "$data = BAT_GetDailyAttribute($id); echo $data;"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "ExpansionPanel",
+      "caption": "Wochenbericht",
+      "items": [
+        {
+          "type": "RowLayout",
+          "items": [
+            {
+              "type": "PopupButton",
+              "caption": "Versenden",
+              "popup": {
+                "caption": "Wochenbericht wirklich versenden?",
+                "items": [
+                  {
+                    "type": "Button",
+                    "caption": "Wochenbericht versenden",
+                    "onClick": "BAT_TriggerWeeklyReport($id, false, false); echo 'Der Wochenbericht wurde versendet!';"
+                  }
+                ]
+              }
+            },
+            {
+              "type": "PopupButton",
+              "caption": "Zurücksetzen",
+              "popup": {
+                "caption": "Wochenbericht wirklich zurücksetzen?",
+                "items": [
+                  {
+                    "type": "Button",
+                    "caption": "Wochenbericht zurücksetzen",
+                    "onClick": "BAT_ResetWeeklyReportAttribute($id); echo 'Der Tagesbericht wurde zurückgesetzt!';"
+                  }
+                ]
+              }
+            },
+            {
+              "type": "Button",
+              "caption": "Anzeigen",
+              "onClick": "$data = BAT_GetWeeklyAttribute($id); echo $data;"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "ExpansionPanel",
+      "caption": "Testzentrum",
+      "items": [
+        {
+          "type": "TestCenter"
+        }
+      ]
+    }
+  ],
+  "status": [
+    {
+      "code": 101,
+      "icon": "active",
+      "caption": "Batterieueberwachung wird erstellt"
+    },
+    {
+      "code": 102,
+      "icon": "active",
+      "caption": "Batterieueberwachung ist aktiv"
+    },
+    {
+      "code": 103,
+      "icon": "active",
+      "caption": "Batterieueberwachung wird gelöscht"
+    },
+    {
+      "code": 104,
+      "icon": "inactive",
+      "caption": "Batterieueberwachung ist inaktiv"
+    },
+    {
+      "code": 200,
+      "icon": "inactive",
+      "caption": "Es ist Fehler aufgetreten, weitere Informationen unter Meldungen oder im Log"
+    }
+  ]
+}
