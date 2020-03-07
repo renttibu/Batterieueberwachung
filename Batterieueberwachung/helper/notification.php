@@ -349,7 +349,7 @@ trait BAT_notification
             }
             $text .= "\n\n\n\n";
         }
-        $monitoredVariables = json_decode($this->ReadPropertyString('MonitoredVariables'));
+        $monitoredVariables = json_decode($this->ReadPropertyString('MonitoredVariables'), true);
         if (!empty($monitoredVariables)) {
             // Sort variables by name
             usort($monitoredVariables, function ($a, $b)
@@ -361,12 +361,12 @@ trait BAT_notification
             $text .= "Batterie OK:\n\n";
             $text .= "ID, Name\n";
             foreach ($monitoredVariables as $variable) {
-                $id = $variable->ID;
-                if (IPS_ObjectExists($id) && $variable->Use) {
+                $id = $variable['ID'];
+                if (IPS_ObjectExists($id) && $variable['Use']) {
                     $actualValue = boolval(GetValue($id));
-                    $alertingValue = boolval($variable->AlertingValue);
+                    $alertingValue = boolval($variable['AlertingValue']);
                     if ($actualValue != $alertingValue) {
-                        $text .= $variable->ID . ', ' . $variable->Name . "\n";
+                        $text .= $id . ', ' . $variable['Name'] . "\n";
                     }
                 }
             }
