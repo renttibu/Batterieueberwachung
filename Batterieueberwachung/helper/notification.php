@@ -72,7 +72,7 @@ trait BAT_notification
                     // Push notification
                     if ($this->ReadPropertyBoolean('ImmediateNotificationUsePushNotification')) {
                         $pushTitle = substr($location, 0, 32);
-                        $pushText = "\nBatterie OK!\n" . $timeStamp . ' ' . $name . ' (ID ' . $SenderID . ')';
+                        $pushText = "\nBatterie OK!\n" . $name . ' (ID ' . $SenderID . ') ' . $timeStamp;
                         @BENA_SendPushNotification($notificationCenter, $pushTitle, $pushText, 4);
                     }
                     // Email notification
@@ -83,7 +83,7 @@ trait BAT_notification
                     }
                     // SMS Notification
                     if ($this->ReadPropertyBoolean('ImmediateNotificationUseSMSNotification')) {
-                        $smsText = $location . "\nBatterie OK!\n" . $timeStamp . ' ' . $name . ' (ID ' . $SenderID . ')';
+                        $smsText = $location . "\nBatterie OK!\n" . $name . ' (ID ' . $SenderID . ') ' . $timeStamp;
                         @BENA_SendSMSNotification($notificationCenter, $smsText, 4);
                     }
                 }
@@ -92,7 +92,7 @@ trait BAT_notification
                 // Push notification
                 if ($this->ReadPropertyBoolean('ImmediateNotificationUsePushNotification')) {
                     $pushTitle = substr($location, 0, 32);
-                    $pushText = "\nBatterie schwach!\n" . $timeStamp . ' ' . $name . ' (ID ' . $SenderID . ')';
+                    $pushText = "\nBatterie schwach!\n" . $name . ' (ID ' . $SenderID . ') ' . $timeStamp;
                     @BENA_SendPushNotification($notificationCenter, $pushTitle, $pushText, 4);
                 }
                 // Email notification
@@ -103,7 +103,7 @@ trait BAT_notification
                 }
                 // SMS notification
                 if ($this->ReadPropertyBoolean('ImmediateNotificationUseSMSNotification')) {
-                    $smsText = $location . "\nBatterie schwach!\n" . $timeStamp . ' ' . $name . ' (ID ' . $SenderID . ')';
+                    $smsText = $location . "\nBatterie schwach!\n" . $name . ' (ID ' . $SenderID . ') ' . $timeStamp;
                     @BENA_SendSMSNotification($notificationCenter, $smsText, 4);
                 }
             }
@@ -177,7 +177,7 @@ trait BAT_notification
                 if ($this->ReadPropertyBoolean('DailyReportUsePushNotification')) {
                     foreach ($dailyLowBatteryVariables as $variable) {
                         $pushTitle = substr($location, 0, 32);
-                        $pushText = "\nBatterie schwach!\n" . $timeStamp . ' ' . $variable['name'] . ' (ID ' . $variable['id'] . ')';
+                        $pushText = "\nBatterie schwach!\n" . $variable['name'] . ' (ID ' . $variable['id'] . ') ' . $timeStamp;
                         @BENA_SendPushNotification($notificationCenter, $pushTitle, $pushText, 4);
                     }
                 }
@@ -190,7 +190,7 @@ trait BAT_notification
                 // SMS notification
                 if ($this->ReadPropertyBoolean('DailyReportUseSMSNotification')) {
                     foreach ($dailyLowBatteryVariables as $variable) {
-                        $smsText = $location . "\nBatterie schwach!\n" . $timeStamp . ' ' . $variable['name'] . ' (ID ' . $variable['id'] . ')';
+                        $smsText = $location . "\nBatterie schwach!\n" . $variable['name'] . ' (ID ' . $variable['id'] . ') ' . $timeStamp;
                         @BENA_SendSMSNotification($notificationCenter, $smsText, 4);
                     }
                 }
@@ -275,7 +275,7 @@ trait BAT_notification
                     if ($this->ReadPropertyBoolean('WeeklyReportUsePushNotification')) {
                         foreach ($weeklyLowBatteryVariables as $variable) {
                             $pushTitle = substr($location, 0, 32);
-                            $pushText = "\nBatterie schwach!\n" . $timeStamp . ' ' . $variable['name'] . ' (ID ' . $variable['id'] . ')';
+                            $pushText = "\nBatterie schwach!\n" . $variable['name'] . ' (ID ' . $variable['id'] . ') ' . $timeStamp;
                             @BENA_SendPushNotification($notificationCenter, $pushTitle, $pushText, 4);
                         }
                     }
@@ -288,7 +288,7 @@ trait BAT_notification
                     // SMS notification
                     if ($this->ReadPropertyBoolean('WeeklyReportUseSMSNotification')) {
                         foreach ($weeklyLowBatteryVariables as $variable) {
-                            $smsText = $location . "\nBatterie schwach!\n" . $timeStamp . ' ' . $variable['name'] . ' (ID ' . $variable['id'] . ')';
+                            $smsText = $location . "\nBatterie schwach!\n" . $variable['name'] . ' (ID ' . $variable['id'] . ') ' . $timeStamp;
                             @BENA_SendSMSNotification($notificationCenter, $smsText, 4);
                         }
                     }
@@ -337,6 +337,13 @@ trait BAT_notification
         if (!empty($lowBatteryVariables)) {
             $text .= "Batterie schwach:\n\n";
             $text .= "Datum, Uhrzeit, ID, Name\n";
+            // Sort variables by name
+            usort($lowBatteryVariables, function ($a, $b)
+            {
+                return $a['Name'] <=> $b['Name'];
+            });
+            // Rebase array
+            $lowBatteryVariables = array_values($lowBatteryVariables);
             foreach ($lowBatteryVariables as $variable) {
                 $text .= $logText = $variable['timestamp'] . ', ' . $variable['id'] . ', ' . $variable['name'] . "\n";
             }
@@ -344,6 +351,13 @@ trait BAT_notification
         }
         $monitoredVariables = json_decode($this->ReadPropertyString('MonitoredVariables'));
         if (!empty($monitoredVariables)) {
+            // Sort variables by name
+            usort($monitoredVariables, function ($a, $b)
+            {
+                return $a['Name'] <=> $b['Name'];
+            });
+            // Rebase array
+            $monitoredVariables = array_values($monitoredVariables);
             $text .= "Batterie OK:\n\n";
             $text .= "ID, Name\n";
             foreach ($monitoredVariables as $variable) {

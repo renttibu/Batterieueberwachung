@@ -3,6 +3,7 @@
   "name": "Batterieueberwachung",
   "type": 3,
   "vendor": "NTUB",
+  "url": "https://github.com/ubittner/Batterieueberwachung",
   "aliases": [
     "Batterieüberwachung"
   ],
