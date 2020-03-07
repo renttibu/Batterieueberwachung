@@ -340,7 +340,7 @@ trait BAT_notification
             // Sort variables by name
             usort($lowBatteryVariables, function ($a, $b)
             {
-                return $a['Name'] <=> $b['Name'];
+                return $a['name'] <=> $b['name'];
             });
             // Rebase array
             $lowBatteryVariables = array_values($lowBatteryVariables);
