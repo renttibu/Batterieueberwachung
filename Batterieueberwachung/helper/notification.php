@@ -346,7 +346,7 @@ trait BAT_notification
             // Rebase array
             $lowBatteryVariables = array_values($lowBatteryVariables);
             foreach ($lowBatteryVariables as $variable) {
-                $text .= $logText = $variable['timestamp'] . ', ' . $variable['id'] . ', ' . $variable['name'] . ', ' . $variable['address'] . "\n";
+                $text .= $logText = $variable['timestamp'] . ',  ID: ' . $variable['id'] . ',  ' . $variable['name'] . ',  Adresse: ' . $variable['address'] . "\n";
             }
             $text .= "\n\n\n\n";
         }
@@ -368,7 +368,7 @@ trait BAT_notification
                     $actualValue = boolval(GetValue($id));
                     $alertingValue = boolval($variable['AlertingValue']);
                     if ($actualValue != $alertingValue) {
-                        $text .= $timeStamp . ', ' . $id . ', ' . $variable['Name'] . ',' . $variable['Address'] . "\n";
+                        $text .= $timeStamp . ',  ID: ' . $id . ',  ' . $variable['Name'] . ',  Adresse: ' . $variable['Address'] . "\n";
                     }
                 }
             }
