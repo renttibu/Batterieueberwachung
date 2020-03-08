@@ -612,7 +612,7 @@
                   {
                     "type": "Button",
                     "caption": "Wochenbericht zurücksetzen",
-                    "onClick": "BAT_ResetWeeklyReportAttribute($id); echo 'Der Tagesbericht wurde zurückgesetzt!';"
+                    "onClick": "BAT_ResetWeeklyReportAttribute($id); echo 'Der Wochenbericht wurde zurückgesetzt!';"
                   }
                 ]
               }
