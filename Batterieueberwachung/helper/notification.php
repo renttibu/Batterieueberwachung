@@ -337,7 +337,6 @@ trait BAT_notification
         $text = "Aktueller Batteriestatus:\n\n" . GetValueFormatted($this->GetIDForIdent('Status')) . "\n\n\n\n";
         if (!empty($lowBatteryVariables)) {
             $text .= "Batterie schwach:\n\n";
-            $text .= "Datum, Uhrzeit, ID, Name, Adresse\n";
             // Sort variables by name
             usort($lowBatteryVariables, function ($a, $b)
             {
@@ -360,7 +359,6 @@ trait BAT_notification
             // Rebase array
             $monitoredVariables = array_values($monitoredVariables);
             $text .= "Batterie OK:\n\n";
-            $text .= "Datum, Uhrzeit, ID, Name, Adresse\n";
             $timeStamp = date('d.m.Y, H:i:s');
             foreach ($monitoredVariables as $variable) {
                 $id = $variable['ID'];
