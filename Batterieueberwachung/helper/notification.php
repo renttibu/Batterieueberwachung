@@ -35,18 +35,19 @@ trait BAT_notification
         }
         $key = array_search($SenderID, array_column($monitoredVariables, 'ID'));
         $name = $monitoredVariables[$key]['Name'];
+        $address = $monitoredVariables[$key]['Address'];
         $alertingValue = boolval($monitoredVariables[$key]['AlertingValue']);
         $lowBattery = false;
         if ($ActualValue == $alertingValue) {
             $lowBattery = true;
             // Immediate attribute
             $lowBatteryVariable = json_decode($this->ReadAttributeString('LowBatteryVariable'), true);
-            array_push($lowBatteryVariable, ['id' => $SenderID, 'name' => $name, 'timestamp' => $timeStamp]);
+            array_push($lowBatteryVariable, ['id' => $SenderID, 'name' => $name, 'timestamp' => $timeStamp, 'address' => $address]);
             $this->WriteAttributeString('LowBatteryVariable', json_encode($lowBatteryVariable));
             // Daily attribute
             if ($this->ReadPropertyBoolean('DailyReport')) {
                 $dailyLowBatteryVariables = json_decode($this->ReadAttributeString('DailyLowBatteryVariables'), true);
-                array_push($dailyLowBatteryVariables, ['id' => $SenderID, 'name' => $name, 'timestamp' => $timeStamp]);
+                array_push($dailyLowBatteryVariables, ['id' => $SenderID, 'name' => $name, 'timestamp' => $timeStamp, 'address' => $address]);
                 $this->WriteAttributeString('DailyLowBatteryVariables', json_encode($dailyLowBatteryVariables));
             } else {
                 $this->WriteAttributeString('DailyLowBatteryVariables', '[]');
@@ -54,7 +55,7 @@ trait BAT_notification
             // Weekly attribute
             if ($this->ReadPropertyBoolean('WeeklyReport')) {
                 $weeklyLowBatteryVariables = json_decode($this->ReadAttributeString('WeeklyLowBatteryVariables'), true);
-                array_push($weeklyLowBatteryVariables, ['id' => $SenderID, 'name' => $name, 'timestamp' => $timeStamp]);
+                array_push($weeklyLowBatteryVariables, ['id' => $SenderID, 'name' => $name, 'timestamp' => $timeStamp, 'address' => $address]);
                 $this->WriteAttributeString('WeeklyLowBatteryVariables', json_encode($weeklyLowBatteryVariables));
             } else {
                 $this->WriteAttributeString('WeeklyLowBatteryVariables', '[]');
@@ -336,7 +337,7 @@ trait BAT_notification
         $text = "Aktueller Batteriestatus:\n\n" . GetValueFormatted($this->GetIDForIdent('Status')) . "\n\n\n\n";
         if (!empty($lowBatteryVariables)) {
             $text .= "Batterie schwach:\n\n";
-            $text .= "Datum, Uhrzeit, ID, Name\n";
+            $text .= "Datum, Uhrzeit, ID, Name, Adresse\n";
             // Sort variables by name
             usort($lowBatteryVariables, function ($a, $b)
             {
@@ -345,7 +346,7 @@ trait BAT_notification
             // Rebase array
             $lowBatteryVariables = array_values($lowBatteryVariables);
             foreach ($lowBatteryVariables as $variable) {
-                $text .= $logText = $variable['timestamp'] . ', ' . $variable['id'] . ', ' . $variable['name'] . "\n";
+                $text .= $logText = $variable['timestamp'] . ', ' . $variable['id'] . ', ' . $variable['name'] . ', ' . $variable['address'] . "\n";
             }
             $text .= "\n\n\n\n";
         }
@@ -359,14 +360,15 @@ trait BAT_notification
             // Rebase array
             $monitoredVariables = array_values($monitoredVariables);
             $text .= "Batterie OK:\n\n";
-            $text .= "ID, Name\n";
+            $text .= "Datum, Uhrzeit, ID, Name, Adresse\n";
+            $timeStamp = date('d.m.Y, H:i:s');
             foreach ($monitoredVariables as $variable) {
                 $id = $variable['ID'];
                 if (IPS_ObjectExists($id) && $variable['Use']) {
                     $actualValue = boolval(GetValue($id));
                     $alertingValue = boolval($variable['AlertingValue']);
                     if ($actualValue != $alertingValue) {
-                        $text .= $id . ', ' . $variable['Name'] . "\n";
+                        $text .= $timeStamp . ', ' . $id . ', ' . $variable['Name'] . ',' . $variable['Address'] . "\n";
                     }
                 }
             }

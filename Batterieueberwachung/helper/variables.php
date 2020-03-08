@@ -225,6 +225,40 @@ trait BAT_variables
             }
         }
         $this->SendDebug(__FUNCTION__, 'Data: ' . json_encode($data), 0);
+        // Delete variable in existing attributes
+        // Immediate attribute
+        $lowBatteryVariables = json_decode($this->ReadAttributeString('LowBatteryVariable'), true);
+        if (!empty($lowBatteryVariables)) {
+            foreach ($lowBatteryVariables as $key => $variable) {
+                if ($variable['id'] == $VariableID) {
+                    unset($lowBatteryVariables[$key]);
+                }
+            }
+            $lowBatteryVariables = array_values($lowBatteryVariables);
+            $this->WriteAttributeString('LowBatteryVariable', json_encode($lowBatteryVariables));
+        }
+        // Daily attribute
+        $lowBatteryVariables = json_decode($this->ReadAttributeString('DailyLowBatteryVariables'), true);
+        if (!empty($lowBatteryVariables)) {
+            foreach ($lowBatteryVariables as $key => $variable) {
+                if ($variable['id'] == $VariableID) {
+                    unset($lowBatteryVariables[$key]);
+                }
+            }
+            $lowBatteryVariables = array_values($lowBatteryVariables);
+            $this->WriteAttributeString('DailyLowBatteryVariables', json_encode($lowBatteryVariables));
+        }
+        // Weekly attribute
+        $lowBatteryVariables = json_decode($this->ReadAttributeString('WeeklyLowBatteryVariables'), true);
+        if (!empty($lowBatteryVariables)) {
+            foreach ($lowBatteryVariables as $key => $variable) {
+                if ($variable['id'] == $VariableID) {
+                    unset($lowBatteryVariables[$key]);
+                }
+            }
+            $lowBatteryVariables = array_values($lowBatteryVariables);
+            $this->WriteAttributeString('WeeklyLowBatteryVariables', json_encode($lowBatteryVariables));
+        }
         IPS_SetProperty($this->InstanceID, 'MonitoredVariables', json_encode($data));
         if (IPS_HasChanges($this->InstanceID)) {
             IPS_ApplyChanges($this->InstanceID);
