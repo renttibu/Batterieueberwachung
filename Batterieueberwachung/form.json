@@ -225,9 +225,22 @@
               "caption": "Sofortige Benachrichtigung verwenden"
             },
             {
+              "type": "Label",
+              "caption": " "
+            },
+            {
               "type": "CheckBox",
               "name": "ImmediateNotificationOnlyWeakBattery",
               "caption": "Nur Batterie schwach"
+            },
+            {
+              "type": "Label",
+              "caption": " "
+            },
+            {
+              "type": "CheckBox",
+              "name": "ImmediateNotificationMaximumOncePerDay",
+              "caption": "Maximal 1x pro Tag"
             }
           ]
         },
@@ -484,9 +497,59 @@
       "caption": "Konfiguration",
       "items": [
         {
-          "type": "Button",
-          "caption": "Konfiguration neu einlesen",
-          "onClick": "BAT_ReloadConfiguration($id);"
+          "type": "RowLayout",
+          "items": [
+            {
+              "type": "Button",
+              "caption": "Neu einlesen",
+              "onClick": "BAT_ReloadConfiguration($id);"
+            },
+            {
+              "type": "Label",
+              "caption": " "
+            },
+            {
+              "type": "SelectCategory",
+              "name": "BackupCategory",
+              "caption": "Kategorie"
+            },
+            {
+              "type": "Label",
+              "caption": " "
+            },
+            {
+              "type": "Button",
+              "caption": "Sichern",
+              "onClick": "BAT_CreateBackup($id, $BackupCategory);"
+            },
+            {
+              "type": "Label",
+              "caption": " "
+            },
+            {
+              "type": "SelectScript",
+              "name": "ConfigurationScript",
+              "caption": "Konfigurationsskript"
+            },
+            {
+              "type": "Label",
+              "caption": " "
+            },
+            {
+              "type": "PopupButton",
+              "caption": "Wiederherstellen",
+              "popup": {
+                "caption": "Konfiguration wirklich wiederherstellen?",
+                "items": [
+                  {
+                    "type": "Button",
+                    "caption": "Wiederherstellen",
+                    "onClick": "BAT_RestoreConfiguration($id, $ConfigurationScript);"
+                  }
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -540,6 +603,36 @@
     },
     {
       "type": "ExpansionPanel",
+      "caption": "Sofortige Benachrichtigung",
+      "items": [
+        {
+          "type": "RowLayout",
+          "items": [
+            {
+              "type": "Button",
+              "caption": "Gesperrte Variablen anzeigen",
+              "onClick": "BAT_ShowLockedVariables($id);"
+            },
+            {
+              "type": "PopupButton",
+              "caption": "Sperrliste zurücksetzten",
+              "popup": {
+                "caption": "Sperrliste wirklich zurücksetzten?",
+                "items": [
+                  {
+                    "type": "Button",
+                    "caption": "Sperrliste zurücksetzten",
+                    "onClick": "BAT_ResetBlacklist($id); echo 'Die Sperrliste wurde zurückgesetzt!';"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "ExpansionPanel",
       "caption": "Tagesbericht",
       "items": [
         {
@@ -575,8 +668,8 @@
             },
             {
               "type": "Button",
-              "caption": "Anzeigen",
-              "onClick": "$data = BAT_GetDailyAttribute($id); echo $data;"
+              "caption": "Schwache Batterien anzeigen",
+              "onClick": "$data = BAT_GetDailyAttribute($id); print_r($data);"
             }
           ]
         }
@@ -619,8 +712,8 @@
             },
             {
               "type": "Button",
-              "caption": "Anzeigen",
-              "onClick": "$data = BAT_GetWeeklyAttribute($id); echo $data;"
+              "caption": "Schwache Batterien anzeigen",
+              "onClick": "$data = BAT_GetWeeklyAttribute($id); print_r($data);"
             }
           ]
         }

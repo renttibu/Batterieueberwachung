@@ -34,6 +34,7 @@ include_once __DIR__ . '/helper/autoload.php';
 class Batterieueberwachung extends IPSModule
 {
     // Helper
+    use BAT_backupRestore;
     use BAT_notification;
     use BAT_variables;
 
@@ -78,6 +79,7 @@ class Batterieueberwachung extends IPSModule
         $this->RegisterMessages();
 
         // Set timer
+        $this->SetResetBlacklistTimer();
         $this->SetDailyReportTimer();
         $this->SetWeeklyReportTimer();
 
@@ -206,14 +208,14 @@ class Batterieueberwachung extends IPSModule
         return json_encode($formdata);
     }
 
-    public function GetDailyAttribute(): string
+    public function GetDailyAttribute(): array
     {
-        return $this->ReadAttributeString('DailyLowBatteryVariables');
+        return json_decode($this->ReadAttributeString('DailyReportLowBatteryVariables'), true);
     }
 
-    public function GetWeeklyAttribute(): string
+    public function GetWeeklyAttribute(): array
     {
-        return $this->ReadAttributeString('WeeklyLowBatteryVariables');
+        return json_decode($this->ReadAttributeString('WeeklyReportLowBatteryVariables'), true);
     }
 
     //#################### Request action
@@ -253,6 +255,7 @@ class Batterieueberwachung extends IPSModule
         $this->RegisterPropertyInteger('NotificationCenter', 0);
         $this->RegisterPropertyBoolean('ImmediateNotification', true);
         $this->RegisterPropertyBoolean('ImmediateNotificationOnlyWeakBattery', true);
+        $this->RegisterPropertyBoolean('ImmediateNotificationMaximumOncePerDay', true);
         $this->RegisterPropertyBoolean('ImmediateNotificationUsePushNotification', true);
         $this->RegisterPropertyBoolean('ImmediateNotificationUseEmailNotification', true);
         $this->RegisterPropertyBoolean('ImmediateNotificationUseSMSNotification', true);
@@ -342,6 +345,10 @@ class Batterieueberwachung extends IPSModule
             $this->UpdateBatteryList();
         }
         IPS_SetHidden($this->GetIDForIdent('BatteryList'), !$useBatteryList);
+        // Attribute
+        if (!$this->ReadPropertyBoolean('ImmediateNotificationMaximumOncePerDay')) {
+            $this->ResetBlacklist();
+        }
     }
 
     private function UnregisterMessages(): void
@@ -377,8 +384,20 @@ class Batterieueberwachung extends IPSModule
 
     private function RegisterTimers(): void
     {
+        $this->RegisterTimer('ResetBlacklist', 0, 'BAT_ResetBlacklist(' . $this->InstanceID . ');');
         $this->RegisterTimer('DailyReport', 0, 'BAT_TriggerDailyReport(' . $this->InstanceID . ', true);');
         $this->RegisterTimer('WeeklyReport', 0, 'BAT_TriggerWeeklyReport(' . $this->InstanceID . ', true, true);');
+    }
+
+    private function SetResetBlacklistTimer(): void
+    {
+        $timerInterval = 0;
+        if ($this->ReadPropertyBoolean('ImmediateNotificationMaximumOncePerDay')) {
+            $now = time();
+            $tomorrowMidnight = mktime(0, 0, 0, (int) date('n'), (int) date('j') + 1);
+            $timerInterval = ($tomorrowMidnight - $now) * 1000;
+        }
+        $this->SetTimerInterval('ResetBlacklist', $timerInterval);
     }
 
     private function SetDailyReportTimer(): void
@@ -417,8 +436,10 @@ class Batterieueberwachung extends IPSModule
 
     private function RegisterAttributes(): void
     {
-        $this->RegisterAttributeString('LowBatteryVariable', '[]');
-        $this->RegisterAttributeString('DailyLowBatteryVariables', '[]');
-        $this->RegisterAttributeString('WeeklyLowBatteryVariables', '[]');
+        $this->RegisterAttributeString('ImmediateNotificationBlacklist', '[]');
+        $this->RegisterAttributeString('ImmediateNotificationBlacklistLowBattery', '[]');
+        $this->RegisterAttributeString('ImmediateNotificationLowBatteryVariables', '[]');
+        $this->RegisterAttributeString('DailyReportLowBatteryVariables', '[]');
+        $this->RegisterAttributeString('WeeklyReportLowBatteryVariables', '[]');
     }
 }

@@ -227,7 +227,7 @@ trait BAT_variables
         $this->SendDebug(__FUNCTION__, 'Data: ' . json_encode($data), 0);
         // Delete variable in existing attributes
         // Immediate attribute
-        $lowBatteryVariables = json_decode($this->ReadAttributeString('LowBatteryVariable'), true);
+        $lowBatteryVariables = json_decode($this->ReadAttributeString('ImmediateNotificationLowBatteryVariables'), true);
         if (!empty($lowBatteryVariables)) {
             foreach ($lowBatteryVariables as $key => $variable) {
                 if ($variable['id'] == $VariableID) {
@@ -235,10 +235,10 @@ trait BAT_variables
                 }
             }
             $lowBatteryVariables = array_values($lowBatteryVariables);
-            $this->WriteAttributeString('LowBatteryVariable', json_encode($lowBatteryVariables));
+            $this->WriteAttributeString('ImmediateNotificationLowBatteryVariables', json_encode($lowBatteryVariables));
         }
         // Daily attribute
-        $lowBatteryVariables = json_decode($this->ReadAttributeString('DailyLowBatteryVariables'), true);
+        $lowBatteryVariables = json_decode($this->ReadAttributeString('DailyReportLowBatteryVariables'), true);
         if (!empty($lowBatteryVariables)) {
             foreach ($lowBatteryVariables as $key => $variable) {
                 if ($variable['id'] == $VariableID) {
@@ -246,10 +246,10 @@ trait BAT_variables
                 }
             }
             $lowBatteryVariables = array_values($lowBatteryVariables);
-            $this->WriteAttributeString('DailyLowBatteryVariables', json_encode($lowBatteryVariables));
+            $this->WriteAttributeString('DailyReportLowBatteryVariables', json_encode($lowBatteryVariables));
         }
         // Weekly attribute
-        $lowBatteryVariables = json_decode($this->ReadAttributeString('WeeklyLowBatteryVariables'), true);
+        $lowBatteryVariables = json_decode($this->ReadAttributeString('WeeklyReportLowBatteryVariables'), true);
         if (!empty($lowBatteryVariables)) {
             foreach ($lowBatteryVariables as $key => $variable) {
                 if ($variable['id'] == $VariableID) {
@@ -257,7 +257,7 @@ trait BAT_variables
                 }
             }
             $lowBatteryVariables = array_values($lowBatteryVariables);
-            $this->WriteAttributeString('WeeklyLowBatteryVariables', json_encode($lowBatteryVariables));
+            $this->WriteAttributeString('WeeklyReportLowBatteryVariables', json_encode($lowBatteryVariables));
         }
         IPS_SetProperty($this->InstanceID, 'MonitoredVariables', json_encode($data));
         if (IPS_HasChanges($this->InstanceID)) {

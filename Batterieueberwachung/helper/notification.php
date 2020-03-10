@@ -6,6 +6,27 @@ declare(strict_types=1);
 trait BAT_notification
 {
     /**
+     * Resets the blacklist for immediate notification maximum once per day.
+     */
+    public function ResetBlacklist(): void
+    {
+        $this->SetResetBlacklistTimer();
+        $this->WriteAttributeString('ImmediateNotificationBlacklistLowBattery', '[]');
+        $this->WriteAttributeString('ImmediateNotificationBlacklist', '[]');
+    }
+
+    /**
+     * Shows the locked variables for immediate notification.
+     */
+    public function ShowLockedVariables(): void
+    {
+        echo "Batterie schwach:\n";
+        print_r(json_decode($this->ReadAttributeString('ImmediateNotificationBlacklistLowBattery'), true));
+        echo "\n\nBatterie OK:\n";
+        print_r(json_decode($this->ReadAttributeString('ImmediateNotificationBlacklist'), true));
+    }
+
+    /**
      * Triggers the immediate notification.
      *
      * @param int $SenderID
@@ -41,24 +62,24 @@ trait BAT_notification
         if ($ActualValue == $alertingValue) {
             $lowBattery = true;
             // Immediate attribute
-            $lowBatteryVariable = json_decode($this->ReadAttributeString('LowBatteryVariable'), true);
+            $lowBatteryVariable = json_decode($this->ReadAttributeString('ImmediateNotificationLowBatteryVariables'), true);
             array_push($lowBatteryVariable, ['id' => $SenderID, 'name' => $name, 'timestamp' => $timeStamp, 'address' => $address]);
-            $this->WriteAttributeString('LowBatteryVariable', json_encode($lowBatteryVariable));
+            $this->WriteAttributeString('ImmediateNotificationLowBatteryVariables', json_encode($lowBatteryVariable));
             // Daily attribute
             if ($this->ReadPropertyBoolean('DailyReport')) {
-                $dailyLowBatteryVariables = json_decode($this->ReadAttributeString('DailyLowBatteryVariables'), true);
+                $dailyLowBatteryVariables = json_decode($this->ReadAttributeString('DailyReportLowBatteryVariables'), true);
                 array_push($dailyLowBatteryVariables, ['id' => $SenderID, 'name' => $name, 'timestamp' => $timeStamp, 'address' => $address]);
-                $this->WriteAttributeString('DailyLowBatteryVariables', json_encode($dailyLowBatteryVariables));
+                $this->WriteAttributeString('DailyReportLowBatteryVariables', json_encode($dailyLowBatteryVariables));
             } else {
-                $this->WriteAttributeString('DailyLowBatteryVariables', '[]');
+                $this->WriteAttributeString('DailyReportLowBatteryVariables', '[]');
             }
             // Weekly attribute
             if ($this->ReadPropertyBoolean('WeeklyReport')) {
-                $weeklyLowBatteryVariables = json_decode($this->ReadAttributeString('WeeklyLowBatteryVariables'), true);
+                $weeklyLowBatteryVariables = json_decode($this->ReadAttributeString('WeeklyReportLowBatteryVariables'), true);
                 array_push($weeklyLowBatteryVariables, ['id' => $SenderID, 'name' => $name, 'timestamp' => $timeStamp, 'address' => $address]);
-                $this->WriteAttributeString('WeeklyLowBatteryVariables', json_encode($weeklyLowBatteryVariables));
+                $this->WriteAttributeString('WeeklyReportLowBatteryVariables', json_encode($weeklyLowBatteryVariables));
             } else {
-                $this->WriteAttributeString('WeeklyLowBatteryVariables', '[]');
+                $this->WriteAttributeString('WeeklyReportLowBatteryVariables', '[]');
             }
         }
         // Notification center must be valid
@@ -70,10 +91,55 @@ trait BAT_notification
             if (!$lowBattery) {
                 // Notification is allowed
                 if (!$this->ReadPropertyBoolean('ImmediateNotificationOnlyWeakBattery')) {
+                    // Check maximum notification per day
+                    $blacklisted = false;
+                    if ($this->ReadPropertyBoolean('ImmediateNotificationMaximumOncePerDay')) {
+                        $blacklist = json_decode($this->ReadAttributeString('ImmediateNotificationBlacklist'), true);
+                        if (!empty($blacklist)) {
+                            if (in_array($SenderID, $blacklist)) {
+                                $this->SendDebug(__FUNCTION__, 'Keine Benachrichtigungen, Variable ist auf der Sperrliste!', 0);
+                                $blacklisted = true;
+                            }
+                        }
+                    }
+                    if (!$blacklisted) {
+                        // Push notification
+                        if ($this->ReadPropertyBoolean('ImmediateNotificationUsePushNotification')) {
+                            $pushTitle = substr($location, 0, 32);
+                            $pushText = "\nBatterie OK!\n" . $name . ' (ID ' . $SenderID . ') ' . $timeStamp;
+                            @BENA_SendPushNotification($notificationCenter, $pushTitle, $pushText, 4);
+                        }
+                        // Email notification
+                        if ($this->ReadPropertyBoolean('ImmediateNotificationUseEmailNotification')) {
+                            $emailSubject = 'Batterieüberwachung ' . $location;
+                            $emailText = $this->CreateEmailReportText(0);
+                            @BENA_SendEMailNotification($notificationCenter, $emailSubject, $emailText, 4);
+                        }
+                        // SMS Notification
+                        if ($this->ReadPropertyBoolean('ImmediateNotificationUseSMSNotification')) {
+                            $smsText = $location . "\nBatterie OK!\n" . $name . ' (ID ' . $SenderID . ') ' . $timeStamp;
+                            @BENA_SendSMSNotification($notificationCenter, $smsText, 4);
+                        }
+                    }
+                }
+            } // Battery is weak
+            else {
+                $blacklisted = false;
+                // Check maximum notification per day
+                if ($this->ReadPropertyBoolean('ImmediateNotificationMaximumOncePerDay')) {
+                    $blacklist = json_decode($this->ReadAttributeString('ImmediateNotificationBlacklistLowBattery'), true);
+                    if (!empty($blacklist)) {
+                        if (in_array($SenderID, $blacklist)) {
+                            $this->SendDebug(__FUNCTION__, 'Keine Benachrichtigungen, Variable ist auf der Sperrliste!', 0);
+                            $blacklisted = true;
+                        }
+                    }
+                }
+                if (!$blacklisted) {
                     // Push notification
                     if ($this->ReadPropertyBoolean('ImmediateNotificationUsePushNotification')) {
                         $pushTitle = substr($location, 0, 32);
-                        $pushText = "\nBatterie OK!\n" . $name . ' (ID ' . $SenderID . ') ' . $timeStamp;
+                        $pushText = "\nBatterie schwach!\n" . $name . ' (ID ' . $SenderID . ') ' . $timeStamp;
                         @BENA_SendPushNotification($notificationCenter, $pushTitle, $pushText, 4);
                     }
                     // Email notification
@@ -82,34 +148,29 @@ trait BAT_notification
                         $emailText = $this->CreateEmailReportText(0);
                         @BENA_SendEMailNotification($notificationCenter, $emailSubject, $emailText, 4);
                     }
-                    // SMS Notification
+                    // SMS notification
                     if ($this->ReadPropertyBoolean('ImmediateNotificationUseSMSNotification')) {
-                        $smsText = $location . "\nBatterie OK!\n" . $name . ' (ID ' . $SenderID . ') ' . $timeStamp;
+                        $smsText = $location . "\nBatterie schwach!\n" . $name . ' (ID ' . $SenderID . ') ' . $timeStamp;
                         @BENA_SendSMSNotification($notificationCenter, $smsText, 4);
                     }
                 }
-            } // Battery is weak
-            else {
-                // Push notification
-                if ($this->ReadPropertyBoolean('ImmediateNotificationUsePushNotification')) {
-                    $pushTitle = substr($location, 0, 32);
-                    $pushText = "\nBatterie schwach!\n" . $name . ' (ID ' . $SenderID . ') ' . $timeStamp;
-                    @BENA_SendPushNotification($notificationCenter, $pushTitle, $pushText, 4);
-                }
-                // Email notification
-                if ($this->ReadPropertyBoolean('ImmediateNotificationUseEmailNotification')) {
-                    $emailSubject = 'Batterieüberwachung ' . $location;
-                    $emailText = $this->CreateEmailReportText(0);
-                    @BENA_SendEMailNotification($notificationCenter, $emailSubject, $emailText, 4);
-                }
-                // SMS notification
-                if ($this->ReadPropertyBoolean('ImmediateNotificationUseSMSNotification')) {
-                    $smsText = $location . "\nBatterie schwach!\n" . $name . ' (ID ' . $SenderID . ') ' . $timeStamp;
-                    @BENA_SendSMSNotification($notificationCenter, $smsText, 4);
-                }
             }
         }
-        $this->WriteAttributeString('LowBatteryVariable', '[]');
+        // Attributes
+        if ($lowBattery) {
+            $blacklist = json_decode($this->ReadAttributeString('ImmediateNotificationBlacklistLowBattery'), true);
+            if (!in_array($SenderID, $blacklist)) {
+                array_push($blacklist, $SenderID);
+            }
+            $this->WriteAttributeString('ImmediateNotificationBlacklistLowBattery', json_encode($blacklist));
+        } else {
+            $blacklist = json_decode($this->ReadAttributeString('ImmediateNotificationBlacklist'), true);
+            if (!in_array($SenderID, $blacklist)) {
+                array_push($blacklist, $SenderID);
+            }
+            $this->WriteAttributeString('ImmediateNotificationBlacklist', json_encode($blacklist));
+        }
+        $this->WriteAttributeString('ImmediateNotificationLowBatteryVariables', '[]');
     }
 
     /**
@@ -118,7 +179,7 @@ trait BAT_notification
     public function ResetDailyReportAttribute(): void
     {
         $this->SendDebug(__FUNCTION__, 'Die Methode wird ausgeführt. (' . microtime(true) . ')', 0);
-        $this->WriteAttributeString('DailyLowBatteryVariables', '[]');
+        $this->WriteAttributeString('DailyReportLowBatteryVariables', '[]');
     }
 
     /**
@@ -148,7 +209,7 @@ trait BAT_notification
             $this->SendDebug(__FUNCTION__, 'Der Tagesbericht wird erstellt, Benachrichtigungen werden versendet.', 0);
             $date = date('d.m.Y');
             $location = $this->ReadPropertyString('Location');
-            $dailyLowBatteryVariables = json_decode($this->ReadAttributeString('DailyLowBatteryVariables'), true);
+            $dailyLowBatteryVariables = json_decode($this->ReadAttributeString('DailyReportLowBatteryVariables'), true);
             // All batteries are ok
             if (empty($dailyLowBatteryVariables)) {
                 // Notification is allowed
@@ -171,8 +232,7 @@ trait BAT_notification
                         @BENA_SendSMSNotification($notificationCenter, $smsText, 4);
                     }
                 }
-            }
-            // Battery is weak
+            } // Battery is weak
             else {
                 // Push notification
                 if ($this->ReadPropertyBoolean('DailyReportUsePushNotification')) {
@@ -208,7 +268,7 @@ trait BAT_notification
     public function ResetWeeklyReportAttribute(): void
     {
         $this->SendDebug(__FUNCTION__, 'Die Methode wird ausgeführt. (' . microtime(true) . ')', 0);
-        $this->WriteAttributeString('WeeklyLowBatteryVariables', '[]');
+        $this->WriteAttributeString('WeeklyReportLowBatteryVariables', '[]');
     }
 
     /**
@@ -246,7 +306,7 @@ trait BAT_notification
                 $this->SendDebug(__FUNCTION__, 'Der Wochenbericht wird erstellt, Benachrichtigungen werden versendet.', 0);
                 $date = date('d.m.Y');
                 $location = $this->ReadPropertyString('Location');
-                $weeklyLowBatteryVariables = json_decode($this->ReadAttributeString('WeeklyLowBatteryVariables'), true);
+                $weeklyLowBatteryVariables = json_decode($this->ReadAttributeString('WeeklyReportLowBatteryVariables'), true);
                 // All batteries are ok
                 if (empty($weeklyLowBatteryVariables)) {
                     // Notification is allowed
@@ -269,8 +329,7 @@ trait BAT_notification
                             @BENA_SendSMSNotification($notificationCenter, $smsText, 4);
                         }
                     }
-                }
-                // Battery is weak
+                } // Battery is weak
                 else {
                     // Push notification
                     if ($this->ReadPropertyBoolean('WeeklyReportUsePushNotification')) {
@@ -320,17 +379,17 @@ trait BAT_notification
         switch ($NotificationType) {
             // Immediate notification
             case 0:
-                $lowBatteryVariables = json_decode($this->ReadAttributeString('LowBatteryVariable'), true);
+                $lowBatteryVariables = json_decode($this->ReadAttributeString('ImmediateNotificationLowBatteryVariables'), true);
                 break;
 
             // Daily report
             case 1:
-                $lowBatteryVariables = json_decode($this->ReadAttributeString('DailyLowBatteryVariables'), true);
+                $lowBatteryVariables = json_decode($this->ReadAttributeString('DailyReportLowBatteryVariables'), true);
                 break;
 
             // Weekly report
             case 2:
-                $lowBatteryVariables = json_decode($this->ReadAttributeString('WeeklyLowBatteryVariables'), true);
+                $lowBatteryVariables = json_decode($this->ReadAttributeString('WeeklyReportLowBatteryVariables'), true);
                 break;
 
         }
