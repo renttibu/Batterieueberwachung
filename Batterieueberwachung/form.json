@@ -26,7 +26,7 @@
         },
         {
           "type": "Label",
-          "caption": "Version:\t\t\t4.00-16"
+          "caption": "Version:\t\t\t4.00-17"
         },
         {
           "type": "Label",
@@ -222,7 +222,7 @@
             {
               "type": "CheckBox",
               "name": "ImmediateNotificationMaximumOncePerDay",
-              "caption": "Maximal eine Benachrichtigung pro Tag bis"
+              "caption": "Maximal eine Benachrichtigung bis"
             },
             {
               "type": "Label",
