@@ -12,7 +12,7 @@
  * @license    	CC BY-NC-SA 4.0
  *              https://creativecommons.org/licenses/by-nc-sa/4.0/
  *
- * @version     4.00-17
+ * @version     4.00-18
  * @date        2020-03-10, 18:00, 1583859600
  * @review      2020-03-10, 18:00
  *
@@ -198,7 +198,7 @@ class Batterieueberwachung extends IPSModule
                 default:
                     $messageDescription = 'keine Bezeichnung';
             }
-            $formdata->elements[4]->items[0]->values[] = [
+            $formdata->actions[1]->items[0]->values[] = [
                 'ParentName'                                            => $parentName,
                 'SenderID'                                              => $senderID,
                 'SenderName'                                            => $senderName,

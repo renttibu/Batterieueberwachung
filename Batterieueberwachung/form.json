@@ -26,7 +26,7 @@
         },
         {
           "type": "Label",
-          "caption": "Version:\t\t\t4.00-17"
+          "caption": "Version:\t\t\t4.00-18"
         },
         {
           "type": "Label",
@@ -437,49 +437,6 @@
           "caption": "Parameter: $_IPS['MonitoringStatus'] (false = OK, true = Alarm)"
         }
       ]
-    },
-    {
-      "type": "ExpansionPanel",
-      "caption": "Registrierte Nachrichten",
-      "items": [
-        {
-          "type": "List",
-          "name": "RegisteredMessages",
-          "caption": "Registrierte Nachrichten",
-          "rowCount": 10,
-          "sort": {
-            "column": "ParentName",
-            "direction": "ascending"
-          },
-          "columns": [
-            {
-              "caption": "Bezeichnung",
-              "name": "ParentName",
-              "width": "350px"
-            },
-            {
-              "caption": "Sender ID",
-              "name": "SenderID",
-              "width": "150px"
-            },
-            {
-              "caption": "Sender Name",
-              "name": "SenderName",
-              "width": "250px"
-            },
-            {
-              "caption": "Nachrichten ID",
-              "name": "MessageID",
-              "width": "150px"
-            },
-            {
-              "caption": "Nachrichten Bezeichnung",
-              "name": "MessageDescription",
-              "width": "250px"
-            }
-          ]
-        }
-      ]
     }
   ],
   "actions": [
@@ -536,6 +493,49 @@
                   }
                 ]
               }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "ExpansionPanel",
+      "caption": "Registrierte Nachrichten",
+      "items": [
+        {
+          "type": "List",
+          "name": "RegisteredMessages",
+          "caption": "Registrierte Nachrichten",
+          "rowCount": 10,
+          "sort": {
+            "column": "ParentName",
+            "direction": "ascending"
+          },
+          "columns": [
+            {
+              "caption": "Bezeichnung",
+              "name": "ParentName",
+              "width": "350px"
+            },
+            {
+              "caption": "Sender ID",
+              "name": "SenderID",
+              "width": "150px"
+            },
+            {
+              "caption": "Sender Name",
+              "name": "SenderName",
+              "width": "250px"
+            },
+            {
+              "caption": "Nachrichten ID",
+              "name": "MessageID",
+              "width": "150px"
+            },
+            {
+              "caption": "Nachrichten Bezeichnung",
+              "name": "MessageDescription",
+              "width": "250px"
             }
           ]
         }
