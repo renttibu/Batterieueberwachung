@@ -26,11 +26,11 @@
         },
         {
           "type": "Label",
-          "caption": "Version:\t\t\t4.00-1"
+          "caption": "Version:\t\t\t4.00-15"
         },
         {
           "type": "Label",
-          "caption": "Datum:\t\t\t06. März 2020"
+          "caption": "Datum:\t\t\t10. März 2020"
         },
         {
           "type": "Label",
@@ -69,25 +69,6 @@
           "type": "CheckBox",
           "name": "EnableBatteryList",
           "caption": "Batterieliste"
-        },
-        {
-          "type": "RowLayout",
-          "items": [
-            {
-              "type": "CheckBox",
-              "name": "CreateLinks",
-              "caption": "Variablenverknüpfungen"
-            },
-            {
-              "type": "Label",
-              "caption": " "
-            },
-            {
-              "type": "SelectCategory",
-              "name": "LinkCategory",
-              "caption": "Kategorie"
-            }
-          ]
         }
       ]
     },
@@ -232,15 +213,25 @@
               "type": "CheckBox",
               "name": "ImmediateNotificationOnlyWeakBattery",
               "caption": "Nur Batterie schwach"
+            }
+          ]
+        },
+        {
+          "type": "RowLayout",
+          "items": [
+            {
+              "type": "CheckBox",
+              "name": "ImmediateNotificationMaximumOncePerDay",
+              "caption": "Maximal eine Benachrichtigung pro Tag bis"
             },
             {
               "type": "Label",
               "caption": " "
             },
             {
-              "type": "CheckBox",
-              "name": "ImmediateNotificationMaximumOncePerDay",
-              "caption": "Maximal 1x pro Tag"
+              "type": "SelectTime",
+              "name": "ResetBlacklistTime",
+              "caption": "Uhrzeit"
             }
           ]
         },
@@ -497,17 +488,13 @@
       "caption": "Konfiguration",
       "items": [
         {
+          "type": "Button",
+          "caption": "Neu einlesen",
+          "onClick": "BAT_ReloadConfiguration($id);"
+        },
+        {
           "type": "RowLayout",
           "items": [
-            {
-              "type": "Button",
-              "caption": "Neu einlesen",
-              "onClick": "BAT_ReloadConfiguration($id);"
-            },
-            {
-              "type": "Label",
-              "caption": " "
-            },
             {
               "type": "SelectCategory",
               "name": "BackupCategory",
@@ -521,11 +508,12 @@
               "type": "Button",
               "caption": "Sichern",
               "onClick": "BAT_CreateBackup($id, $BackupCategory);"
-            },
-            {
-              "type": "Label",
-              "caption": " "
-            },
+            }
+          ]
+        },
+        {
+          "type": "RowLayout",
+          "items": [
             {
               "type": "SelectScript",
               "name": "ConfigurationScript",
@@ -586,18 +574,32 @@
           }
         },
         {
-          "type": "PopupButton",
-          "caption": "Verknüpfungen erstellen",
-          "popup": {
-            "caption": "Variablenverknüpfungen wirklich erstellen?",
-            "items": [
-              {
-                "type": "Button",
-                "caption": "Variablenverknüpfungen erstellen",
-                "onClick": "BAT_CreateVariableLinks($id);"
+          "type": "RowLayout",
+          "items": [
+            {
+              "type": "SelectCategory",
+              "name": "LinkCategory",
+              "caption": "Kategorie"
+            },
+            {
+              "type": "Label",
+              "caption": " "
+            },
+            {
+              "type": "PopupButton",
+              "caption": "Verknüpfungen erstellen",
+              "popup": {
+                "caption": "Variablenverknüpfungen wirklich erstellen?",
+                "items": [
+                  {
+                    "type": "Button",
+                    "caption": "Variablenverknüpfungen erstellen",
+                    "onClick": "BAT_CreateVariableLinks($id, $LinkCategory);"
+                  }
+                ]
               }
-            ]
-          }
+            }
+          ]
         }
       ]
     },
@@ -606,28 +608,23 @@
       "caption": "Sofortige Benachrichtigung",
       "items": [
         {
-          "type": "RowLayout",
-          "items": [
-            {
-              "type": "Button",
-              "caption": "Gesperrte Variablen anzeigen",
-              "onClick": "BAT_ShowLockedVariables($id);"
-            },
-            {
-              "type": "PopupButton",
-              "caption": "Sperrliste zurücksetzten",
-              "popup": {
-                "caption": "Sperrliste wirklich zurücksetzten?",
-                "items": [
-                  {
-                    "type": "Button",
-                    "caption": "Sperrliste zurücksetzten",
-                    "onClick": "BAT_ResetBlacklist($id); echo 'Die Sperrliste wurde zurückgesetzt!';"
-                  }
-                ]
+          "type": "Button",
+          "caption": "Gesperrte Variablen anzeigen",
+          "onClick": "BAT_ShowLockedVariables($id);"
+        },
+        {
+          "type": "PopupButton",
+          "caption": "Sperrliste zurücksetzten",
+          "popup": {
+            "caption": "Sperrliste wirklich zurücksetzten?",
+            "items": [
+              {
+                "type": "Button",
+                "caption": "Sperrliste zurücksetzten",
+                "onClick": "BAT_ResetBlacklist($id); echo 'Die Sperrliste wurde zurückgesetzt!';"
               }
-            }
-          ]
+            ]
+          }
         }
       ]
     },
@@ -636,42 +633,37 @@
       "caption": "Tagesbericht",
       "items": [
         {
-          "type": "RowLayout",
-          "items": [
-            {
-              "type": "PopupButton",
-              "caption": "Versenden",
-              "popup": {
-                "caption": "Tagesbericht wirklich versenden?",
-                "items": [
-                  {
-                    "type": "Button",
-                    "caption": "Tagesbericht versenden",
-                    "onClick": "BAT_TriggerDailyReport($id, false); echo 'Der Tagesbericht wurde versendet!';"
-                  }
-                ]
+          "type": "PopupButton",
+          "caption": "Versenden",
+          "popup": {
+            "caption": "Tagesbericht wirklich versenden?",
+            "items": [
+              {
+                "type": "Button",
+                "caption": "Tagesbericht versenden",
+                "onClick": "BAT_TriggerDailyReport($id, false); echo 'Der Tagesbericht wurde versendet!';"
               }
-            },
-            {
-              "type": "PopupButton",
-              "caption": "Zurücksetzen",
-              "popup": {
-                "caption": "Tagesbericht wirklich zurücksetzen?",
-                "items": [
-                  {
-                    "type": "Button",
-                    "caption": "Tagesbericht zurücksetzen",
-                    "onClick": "BAT_ResetDailyReportAttribute($id); echo 'Der Tagesbericht wurde zurückgesetzt!';"
-                  }
-                ]
+            ]
+          }
+        },
+        {
+          "type": "Button",
+          "caption": "Schwache Batterien anzeigen",
+          "onClick": "$data = BAT_GetDailyAttribute($id); print_r($data);"
+        },
+        {
+          "type": "PopupButton",
+          "caption": "Zurücksetzen",
+          "popup": {
+            "caption": "Tagesbericht wirklich zurücksetzen?",
+            "items": [
+              {
+                "type": "Button",
+                "caption": "Tagesbericht zurücksetzen",
+                "onClick": "BAT_ResetDailyReportAttribute($id); echo 'Der Tagesbericht wurde zurückgesetzt!';"
               }
-            },
-            {
-              "type": "Button",
-              "caption": "Schwache Batterien anzeigen",
-              "onClick": "$data = BAT_GetDailyAttribute($id); print_r($data);"
-            }
-          ]
+            ]
+          }
         }
       ]
     },
@@ -680,42 +672,37 @@
       "caption": "Wochenbericht",
       "items": [
         {
-          "type": "RowLayout",
-          "items": [
-            {
-              "type": "PopupButton",
-              "caption": "Versenden",
-              "popup": {
-                "caption": "Wochenbericht wirklich versenden?",
-                "items": [
-                  {
-                    "type": "Button",
-                    "caption": "Wochenbericht versenden",
-                    "onClick": "BAT_TriggerWeeklyReport($id, false, false); echo 'Der Wochenbericht wurde versendet!';"
-                  }
-                ]
+          "type": "PopupButton",
+          "caption": "Versenden",
+          "popup": {
+            "caption": "Wochenbericht wirklich versenden?",
+            "items": [
+              {
+                "type": "Button",
+                "caption": "Wochenbericht versenden",
+                "onClick": "BAT_TriggerWeeklyReport($id, false, false); echo 'Der Wochenbericht wurde versendet!';"
               }
-            },
-            {
-              "type": "PopupButton",
-              "caption": "Zurücksetzen",
-              "popup": {
-                "caption": "Wochenbericht wirklich zurücksetzen?",
-                "items": [
-                  {
-                    "type": "Button",
-                    "caption": "Wochenbericht zurücksetzen",
-                    "onClick": "BAT_ResetWeeklyReportAttribute($id); echo 'Der Wochenbericht wurde zurückgesetzt!';"
-                  }
-                ]
+            ]
+          }
+        },
+        {
+          "type": "Button",
+          "caption": "Schwache Batterien anzeigen",
+          "onClick": "$data = BAT_GetWeeklyAttribute($id); print_r($data);"
+        },
+        {
+          "type": "PopupButton",
+          "caption": "Zurücksetzen",
+          "popup": {
+            "caption": "Wochenbericht wirklich zurücksetzen?",
+            "items": [
+              {
+                "type": "Button",
+                "caption": "Wochenbericht zurücksetzen",
+                "onClick": "BAT_ResetWeeklyReportAttribute($id); echo 'Der Wochenbericht wurde zurückgesetzt!';"
               }
-            },
-            {
-              "type": "Button",
-              "caption": "Schwache Batterien anzeigen",
-              "onClick": "$data = BAT_GetWeeklyAttribute($id); print_r($data);"
-            }
-          ]
+            ]
+          }
         }
       ]
     },

@@ -110,84 +110,83 @@ trait BAT_variables
 
     /**
      * Creates links of monitored variables.
+     *
+     * @param int $LinkCategory
      */
-    public function CreateVariableLinks(): void
+    public function CreateVariableLinks(int $LinkCategory): void
     {
         $this->SendDebug(__FUNCTION__, 'Die Methode wird ausgeführt. (' . microtime(true) . ')', 0);
-        if ($this->ReadPropertyBoolean('CreateLinks')) {
-            $categoryID = $this->ReadPropertyInteger('LinkCategory');
-            // Define icon first
-            $icon = 'Battery';
-            // Get all monitored variables
-            $monitoredVariables = json_decode($this->ReadPropertyString('MonitoredVariables'));
-            $targetIDs = [];
+        // Define icon first
+        $icon = 'Battery';
+        // Get all monitored variables
+        $monitoredVariables = json_decode($this->ReadPropertyString('MonitoredVariables'));
+        $targetIDs = [];
+        $i = 0;
+        foreach ($monitoredVariables as $variable) {
+            if ($variable->Use) {
+                $targetIDs[$i] = ['name' => $variable->Name, 'targetID' => $variable->ID];
+                $i++;
+            }
+        }
+        // Sort array alphabetically by device name
+        sort($targetIDs);
+        // Get all existing links (links have not an ident field, so we use the object info field)
+        $existingTargetIDs = [];
+        $links = @IPS_GetLinkList();
+        if (!empty($links)) {
             $i = 0;
-            foreach ($monitoredVariables as $variable) {
-                if ($variable->Use) {
-                    $targetIDs[$i] = ['name' => $variable->Name, 'targetID' => $variable->ID];
+            foreach ($links as $link) {
+                $linkInfo = @IPS_GetObject($link)['ObjectInfo'];
+                if ($linkInfo == 'BATT.' . $this->InstanceID) {
+                    // Get target id
+                    $existingTargetID = @IPS_GetLink($link)['TargetID'];
+                    $existingTargetIDs[$i] = ['linkID' => $link, 'targetID' => $existingTargetID];
                     $i++;
                 }
             }
-            // Sort array alphabetically by device name
-            sort($targetIDs);
-            // Get all existing links (links have not an ident field, so we use the object info field)
-            $existingTargetIDs = [];
-            $links = @IPS_GetLinkList();
-            if (!empty($links)) {
-                $i = 0;
-                foreach ($links as $link) {
-                    $linkInfo = @IPS_GetObject($link)['ObjectInfo'];
-                    if ($linkInfo == 'BATT.' . $this->InstanceID) {
-                        // Get target id
-                        $existingTargetID = @IPS_GetLink($link)['TargetID'];
-                        $existingTargetIDs[$i] = ['linkID' => $link, 'targetID' => $existingTargetID];
-                        $i++;
-                    }
-                }
-            }
-            // Delete dead links
-            $deadLinks = array_diff(array_column($existingTargetIDs, 'targetID'), array_column($targetIDs, 'targetID'));
-            if (!empty($deadLinks)) {
-                foreach ($deadLinks as $targetID) {
-                    $position = array_search($targetID, array_column($existingTargetIDs, 'targetID'));
-                    $linkID = $existingTargetIDs[$position]['linkID'];
-                    if (@IPS_LinkExists($linkID)) {
-                        @IPS_DeleteLink($linkID);
-                    }
-                }
-            }
-            // Create new links
-            $newLinks = array_diff(array_column($targetIDs, 'targetID'), array_column($existingTargetIDs, 'targetID'));
-            if (!empty($newLinks)) {
-                foreach ($newLinks as $targetID) {
-                    $linkID = @IPS_CreateLink();
-                    @IPS_SetParent($linkID, $categoryID);
-                    $position = array_search($targetID, array_column($targetIDs, 'targetID'));
-                    @IPS_SetPosition($linkID, $position + 1);
-                    $name = $targetIDs[$position]['name'];
-                    @IPS_SetName($linkID, $name);
-                    @IPS_SetLinkTargetID($linkID, $targetID);
-                    @IPS_SetInfo($linkID, 'BATT.' . $this->InstanceID);
-                    @IPS_SetIcon($linkID, $icon);
-                }
-            }
-            // Edit existing links
-            $existingLinks = array_intersect(array_column($existingTargetIDs, 'targetID'), array_column($targetIDs, 'targetID'));
-            if (!empty($existingLinks)) {
-                foreach ($existingLinks as $targetID) {
-                    $position = array_search($targetID, array_column($targetIDs, 'targetID'));
-                    $targetID = $targetIDs[$position]['targetID'];
-                    $index = array_search($targetID, array_column($existingTargetIDs, 'targetID'));
-                    $linkID = $existingTargetIDs[$index]['linkID'];
-                    @IPS_SetPosition($linkID, $position + 3);
-                    $name = $targetIDs[$position]['name'];
-                    @IPS_SetName($linkID, $name);
-                    @IPS_SetInfo($linkID, 'BATT.' . $this->InstanceID);
-                    @IPS_SetIcon($linkID, $icon);
-                }
-            }
-            echo 'Die Variablenverknüpfungen wurden erfolgreich erstellt!';
         }
+        // Delete dead links
+        $deadLinks = array_diff(array_column($existingTargetIDs, 'targetID'), array_column($targetIDs, 'targetID'));
+        if (!empty($deadLinks)) {
+            foreach ($deadLinks as $targetID) {
+                $position = array_search($targetID, array_column($existingTargetIDs, 'targetID'));
+                $linkID = $existingTargetIDs[$position]['linkID'];
+                if (@IPS_LinkExists($linkID)) {
+                    @IPS_DeleteLink($linkID);
+                }
+            }
+        }
+        // Create new links
+        $newLinks = array_diff(array_column($targetIDs, 'targetID'), array_column($existingTargetIDs, 'targetID'));
+        if (!empty($newLinks)) {
+            foreach ($newLinks as $targetID) {
+                $linkID = @IPS_CreateLink();
+                @IPS_SetParent($linkID, $LinkCategory);
+                $position = array_search($targetID, array_column($targetIDs, 'targetID'));
+                @IPS_SetPosition($linkID, $position + 1);
+                $name = $targetIDs[$position]['name'];
+                @IPS_SetName($linkID, $name);
+                @IPS_SetLinkTargetID($linkID, $targetID);
+                @IPS_SetInfo($linkID, 'BATT.' . $this->InstanceID);
+                @IPS_SetIcon($linkID, $icon);
+            }
+        }
+        // Edit existing links
+        $existingLinks = array_intersect(array_column($existingTargetIDs, 'targetID'), array_column($targetIDs, 'targetID'));
+        if (!empty($existingLinks)) {
+            foreach ($existingLinks as $targetID) {
+                $position = array_search($targetID, array_column($targetIDs, 'targetID'));
+                $targetID = $targetIDs[$position]['targetID'];
+                $index = array_search($targetID, array_column($existingTargetIDs, 'targetID'));
+                $linkID = $existingTargetIDs[$index]['linkID'];
+                @IPS_SetPosition($linkID, $position + 3);
+                $name = $targetIDs[$position]['name'];
+                @IPS_SetName($linkID, $name);
+                @IPS_SetInfo($linkID, 'BATT.' . $this->InstanceID);
+                @IPS_SetIcon($linkID, $icon);
+            }
+        }
+        echo 'Die Variablenverknüpfungen wurden erfolgreich erstellt!';
     }
 
     /**

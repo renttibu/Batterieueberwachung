@@ -12,9 +12,9 @@
  * @license    	CC BY-NC-SA 4.0
  *              https://creativecommons.org/licenses/by-nc-sa/4.0/
  *
- * @version     4.00-1
- * @date        2020-03-06, 18:00, 1583514000
- * @review      2020-03-06, 18:00
+ * @version     4.00-15
+ * @date        2020-03-10, 18:00, 1583859600
+ * @review      2020-03-10, 18:00
  *
  * @see         https://github.com/ubittner/Batterieueberwachung/
  *
@@ -244,7 +244,6 @@ class Batterieueberwachung extends IPSModule
         $this->RegisterPropertyBoolean('EnableStatus', true);
         $this->RegisterPropertyBoolean('EnableBatteryReplacement', true);
         $this->RegisterPropertyBoolean('EnableBatteryList', true);
-        $this->RegisterPropertyBoolean('CreateLinks', false);
         $this->RegisterPropertyInteger('LinkCategory', 0);
 
         // Monitored variables
@@ -256,6 +255,7 @@ class Batterieueberwachung extends IPSModule
         $this->RegisterPropertyBoolean('ImmediateNotification', true);
         $this->RegisterPropertyBoolean('ImmediateNotificationOnlyWeakBattery', true);
         $this->RegisterPropertyBoolean('ImmediateNotificationMaximumOncePerDay', true);
+        $this->RegisterPropertyString('ResetBlacklistTime', '{"hour":7,"minute":0,"second":0}');
         $this->RegisterPropertyBoolean('ImmediateNotificationUsePushNotification', true);
         $this->RegisterPropertyBoolean('ImmediateNotificationUseEmailNotification', true);
         $this->RegisterPropertyBoolean('ImmediateNotificationUseSMSNotification', true);
@@ -393,9 +393,7 @@ class Batterieueberwachung extends IPSModule
     {
         $timerInterval = 0;
         if ($this->ReadPropertyBoolean('ImmediateNotificationMaximumOncePerDay')) {
-            $now = time();
-            $tomorrowMidnight = mktime(0, 0, 0, (int) date('n'), (int) date('j') + 1);
-            $timerInterval = ($tomorrowMidnight - $now) * 1000;
+            $timerInterval = $this->GetInterval('ResetBlacklistTime');
         }
         $this->SetTimerInterval('ResetBlacklist', $timerInterval);
     }
