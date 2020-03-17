@@ -127,7 +127,7 @@ trait BAT_variables
             $string = '';
             if ($this->ReadPropertyBoolean('EnableBatteryList')) {
                 $string = "<table style='width: 100%; border-collapse: collapse;'>";
-                $string .= '<tr><td><b>Status</b></td><td><b>ID</b></td><td><b>Name</b></td><td><b>Adresse</b></td><td><b>Letzter Batteriewechsel</b></td></tr>';
+                $string .= '<tr><td><b>Status</b></td><td><b>ID</b></td><td><b>Name</b></td><td><b>Bemerkung</b></td><td><b>Letzter Batteriewechsel</b></td></tr>';
                 // Sort variables by name
                 usort($batteryList, function ($a, $b)
                 {
