@@ -12,9 +12,9 @@
  * @license    	CC BY-NC-SA 4.0
  *              https://creativecommons.org/licenses/by-nc-sa/4.0/
  *
- * @version     4.00-18
- * @date        2020-03-10, 18:00, 1583859600
- * @review      2020-03-10, 18:00
+ * @version     4.01-19
+ * @date        2020-03-17, 18:00, 1584464400
+ * @review      2020-03-17, 18:00
  *
  * @see         https://github.com/ubittner/Batterieueberwachung/
  *
@@ -23,6 +23,22 @@
  *
  *              Batterieueberwachung
  *             	{3E34CE2F-B59B-8634-DF27-0293F2B700FF}
+ */
+
+/*
+ * Monitoring:
+ * Monitoring is always performed.
+ * If "Monitoring" is disabled in WebFront, it has no effect on monitoring or battery list, just no notification will be sent.
+ *
+ * Critical status:
+ * Low battery will only determined as low battery, if "CheckBattery" from configuration form is enabled.
+ * Update overdue will only determined as update overdue, if "CheckUpdate" from configuration form is enabled.
+ *
+ * Notification:
+ * When the overall status changes, a notification will be sent.
+ * Push notification will only send the actual status at execution time.
+ * SMS notification will only send the actual status at execution time.
+ * Email notification will send a detailed report at execution time and mode.
  */
 
 // Declare
@@ -40,6 +56,7 @@ class Batterieueberwachung extends IPSModule
 
     // Constants
     private const HOMEMATIC_DEVICE_GUID = '{EE4A81C6-5C90-4DB7-AD2F-F6BBD521412E}';
+    private const NOTIFICATION_CENTER_GUID = '{D184C522-507F-BED6-6731-728CE156D659}';
 
     public function Create()
     {
@@ -79,18 +96,18 @@ class Batterieueberwachung extends IPSModule
         $this->RegisterMessages();
 
         // Set timer
-        $this->SetResetBlacklistTimer();
-        $this->SetDailyReportTimer();
-        $this->SetWeeklyReportTimer();
+        $this->SetDailyNotificationTimer();
+        $this->SetWeeklyNotificationTimer();
 
         // Set Options
         $this->SetOptions();
 
-        // Update battery list
-        $this->UpdateBatteryList();
+        // Reset blacklist
+        $this->ResetBlacklist();
 
-        // Check actual status
-        $this->CheckActualStatus();
+        // Check status
+        $this->SetValue('Status', false);
+        $this->CheckMonitoredVariables(0);
     }
 
     public function MessageSink($TimeStamp, $SenderID, $Message, $Data): void
@@ -100,18 +117,18 @@ class Batterieueberwachung extends IPSModule
         // $Data[1] = value changed
         // $Data[2] = last value
         $this->SendDebug(__FUNCTION__, 'SenderID: ' . $SenderID . ', Message: ' . $Message . ', Data: ' . print_r($Data, true), 0);
+        if (!empty($Data)) {
+            foreach ($Data as $key => $value) {
+                $this->SendDebug(__FUNCTION__, 'Data[' . $key . '] = ' . json_encode($value), 0);
+            }
+        }
         switch ($Message) {
             case IPS_KERNELSTARTED:
                 $this->KernelReady();
                 break;
 
             case VM_UPDATE:
-                $this->UpdateBatteryList();
-                $this->CheckActualStatus();
-                // Only if value has changed
-                if ($Data[1]) {
-                    $this->TriggerAlerting($SenderID, boolval($Data[0]));
-                }
+               $this->CheckMonitoredVariables(0);
                 break;
 
             default:
@@ -141,29 +158,57 @@ class Batterieueberwachung extends IPSModule
 
     public function GetConfigurationForm()
     {
-        $formdata = json_decode(file_get_contents(__DIR__ . '/form.json'));
+        $formData = json_decode(file_get_contents(__DIR__ . '/form.json'));
         // Monitored variables
         $monitoredVariables = json_decode($this->ReadPropertyString('MonitoredVariables'), true);
         if (!empty($monitoredVariables)) {
             foreach ($monitoredVariables as $variable) {
                 $rowColor = '';
+                $unicode = json_decode('"\u2705"'); // white_check_mark
+                $actualValue = 0;
+                $lastUpdate = 'Nie';
                 if (!IPS_ObjectExists($variable['ID'])) {
+                    $unicode = '';
                     $rowColor = '#FFC0C0'; // light red
                 } else {
+                    // Check battery
                     $actualValue = boolval(GetValue($variable['ID']));
-                    $alertingValue = boolval($variable['AlertingValue']);
-                    if ($actualValue == $alertingValue) {
-                        $rowColor = '#FFFFC0'; // light yellow
+                    if ($variable['CheckBattery']) {
+                        $alertingValue = boolval($variable['AlertingValue']);
+                        if ($actualValue == $alertingValue) {
+                            $unicode = json_decode('"\u26a0\ufe0f"'); // warning
+                        }
+                    }
+                    // Check update
+                    $variableUpdate = IPS_GetVariable($variable['ID'])['VariableUpdated'];
+                    if ($variableUpdate != 0) {
+                        $lastUpdate = date('d.m.Y', $variableUpdate);
+                    }
+                    if ($variable['CheckUpdate']) {
+                        if ($variableUpdate == 0) {
+                            $unicode = json_decode('"\u2757"'); // heavy_exclamation_mark
+                        }
+                        $now = time();
+                        $dateDifference = ($now - $variableUpdate) / (60 * 60 * 24);
+                        $updatePeriod = $variable['UpdatePeriod'];
+                        if ($dateDifference > $updatePeriod) {
+                            $unicode = json_decode('"\u2757"'); // heavy_exclamation_mark
+                        }
                     }
                 }
-                $formdata->elements[2]->items[1]->values[] = [
-                    'Use'                                           => $variable['Use'],
-                    'ID'                                            => $variable['ID'],
-                    'Name'                                          => $variable['Name'],
-                    'Address'                                       => $variable['Address'],
-                    'AlertingValue'                                 => $variable['AlertingValue'],
-                    'LastBatteryReplacementDate'                    => $variable['LastBatteryReplacementDate'],
-                    'rowColor'                                      => $rowColor];
+                $formData->elements[2]->items[1]->values[] = [
+                    'ActualStatus'            => $unicode,
+                    'ID'                      => $variable['ID'],
+                    'Name'                    => $variable['Name'],
+                    'Comment'                 => $variable['Comment'],
+                    'CheckBattery'            => $variable['CheckBattery'],
+                    'ActualValue'             => $actualValue,
+                    'AlertingValue'           => $variable['AlertingValue'],
+                    'CheckUpdate'             => $variable['CheckUpdate'],
+                    'UpdatePeriod'            => $variable['UpdatePeriod'],
+                    'LastUpdate'              => $lastUpdate,
+                    'LastBatteryReplacement'  => $variable['LastBatteryReplacement'],
+                    'rowColor'                => $rowColor];
             }
         }
         // Registered messages
@@ -176,10 +221,10 @@ class Batterieueberwachung extends IPSModule
                 continue;
             } else {
                 $senderName = IPS_GetName($senderID);
-                $parentName = $senderName;
+                $description = $senderName;
                 $parentID = IPS_GetParent($senderID);
                 if (is_int($parentID) && $parentID != 0 && @IPS_ObjectExists($parentID)) {
-                    $parentName = IPS_GetName($parentID);
+                    $description = IPS_GetName($parentID);
                 }
             }
             switch ($messageID) {
@@ -198,24 +243,71 @@ class Batterieueberwachung extends IPSModule
                 default:
                     $messageDescription = 'keine Bezeichnung';
             }
-            $formdata->actions[1]->items[0]->values[] = [
-                'ParentName'                                            => $parentName,
-                'SenderID'                                              => $senderID,
-                'SenderName'                                            => $senderName,
-                'MessageID'                                             => $messageID,
-                'MessageDescription'                                    => $messageDescription];
+            $formData->actions[1]->items[0]->values[] = [
+                'Description'         => $description,
+                'SenderID'            => $senderID,
+                'SenderName'          => $senderName,
+                'MessageID'           => $messageID,
+                'MessageDescription'  => $messageDescription];
         }
-        return json_encode($formdata);
-    }
-
-    public function GetDailyAttribute(): array
-    {
-        return json_decode($this->ReadAttributeString('DailyReportLowBatteryVariables'), true);
-    }
-
-    public function GetWeeklyAttribute(): array
-    {
-        return json_decode($this->ReadAttributeString('WeeklyReportLowBatteryVariables'), true);
+        // Blacklist
+        $blacklist = json_decode($this->ReadAttributeString('Blacklist'), true);
+        if (!empty($blacklist)) {
+            $text = 'erlaubt';
+            $normalStatus = $blacklist['normalStatus'];
+            if ($normalStatus) {
+                $text = 'gesperrt';
+            }
+            $formData->actions[3]->items[0]->values[] = [
+                'Status'                => 'OK',
+                'Notification'          => $text];
+            $criticalStatus = $blacklist['criticalStatus'];
+            if ($criticalStatus) {
+                $text = 'gesperrt';
+            }
+            $formData->actions[3]->items[0]->values[] = [
+                'Status'                => 'Alarm',
+                'Notification'          => $text];
+        }
+        // Daily critical variables
+        $criticalVariables = json_decode($this->ReadAttributeString('CriticalStateVariables'), true)['dailyNotification'];
+        if (!empty($criticalVariables)) {
+            foreach ($criticalVariables as $variable) {
+                $actualStatus = $variable['actualStatus'];
+                if ($actualStatus != 0) {
+                    $unicode = json_decode('"\u26a0\ufe0f"'); // warning
+                    if ($actualStatus == 2) {
+                        $unicode = json_decode('"\u2757"'); // heavy_exclamation_mark
+                    }
+                    $formData->actions[4]->items[0]->values[] = [
+                        'ActualStatus' => $unicode,
+                        'ID'           => $variable['id'],
+                        'Name'         => $variable['name'],
+                        'Comment'      => $variable['comment'],
+                        'Timestamp'    => $variable['timestamp']];
+                }
+            }
+        }
+        // Weekly critical variables
+        $criticalVariables = json_decode($this->ReadAttributeString('CriticalStateVariables'), true)['weeklyNotification'];
+        if (!empty($criticalVariables)) {
+            foreach ($criticalVariables as $variable) {
+                $actualStatus = $variable['actualStatus'];
+                if ($actualStatus != 0) {
+                    $unicode = json_decode('"\u26a0\ufe0f"'); // warning
+                    if ($actualStatus == 2) {
+                        $unicode = json_decode('"\u2757"'); // heavy_exclamation_mark
+                    }
+                    $formData->actions[5]->items[0]->values[] = [
+                        'ActualStatus' => $unicode,
+                        'ID'           => $variable['id'],
+                        'Name'         => $variable['name'],
+                        'Comment'      => $variable['comment'],
+                        'Timestamp'    => $variable['timestamp']];
+                }
+            }
+        }
+        return json_encode($formData);
     }
 
     //#################### Request action
@@ -225,11 +317,11 @@ class Batterieueberwachung extends IPSModule
         switch ($Ident) {
             case 'Monitoring':
                 $this->SetValue('Monitoring', $Value);
-                $this->CheckActualStatus();
+                $this->CheckMonitoredVariables(0);
                 break;
 
             case 'BatteryReplacement':
-                $this->UpdateBatteryReplacementDate($Value);
+                $this->UpdateBatteryReplacement($Value);
                 break;
 
         }
@@ -244,7 +336,6 @@ class Batterieueberwachung extends IPSModule
         $this->RegisterPropertyBoolean('EnableStatus', true);
         $this->RegisterPropertyBoolean('EnableBatteryReplacement', true);
         $this->RegisterPropertyBoolean('EnableBatteryList', true);
-        $this->RegisterPropertyInteger('LinkCategory', 0);
 
         // Monitored variables
         $this->RegisterPropertyString('MonitoredVariables', '[]');
@@ -253,29 +344,26 @@ class Batterieueberwachung extends IPSModule
         $this->RegisterPropertyString('Location', '');
         $this->RegisterPropertyInteger('NotificationCenter', 0);
         $this->RegisterPropertyBoolean('ImmediateNotification', true);
-        $this->RegisterPropertyBoolean('ImmediateNotificationOnlyWeakBattery', true);
+        $this->RegisterPropertyBoolean('ImmediateNotificationOnlyOnAlarm', true);
         $this->RegisterPropertyBoolean('ImmediateNotificationMaximumOncePerDay', true);
         $this->RegisterPropertyString('ResetBlacklistTime', '{"hour":7,"minute":0,"second":0}');
         $this->RegisterPropertyBoolean('ImmediateNotificationUsePushNotification', true);
         $this->RegisterPropertyBoolean('ImmediateNotificationUseEmailNotification', true);
         $this->RegisterPropertyBoolean('ImmediateNotificationUseSMSNotification', true);
-        $this->RegisterPropertyBoolean('DailyReport', true);
-        $this->RegisterPropertyBoolean('DailyReportOnlyWeakBattery', true);
-        $this->RegisterPropertyBoolean('DailyReportUsePushNotification', true);
-        $this->RegisterPropertyBoolean('DailyReportUseEmailNotification', true);
-        $this->RegisterPropertyBoolean('DailyReportUseSMSNotification', true);
-        $this->RegisterPropertyString('DailyReportTime', '{"hour":19,"minute":0,"second":0}');
-        $this->RegisterPropertyBoolean('WeeklyReport', false);
-        $this->RegisterPropertyBoolean('WeeklyReportOnlyWeakBattery', false);
-        $this->RegisterPropertyBoolean('WeeklyReportUsePushNotification', true);
-        $this->RegisterPropertyBoolean('WeeklyReportUseEmailNotification', true);
-        $this->RegisterPropertyBoolean('WeeklyReportUseSMSNotification', true);
-        $this->RegisterPropertyInteger('WeeklyReportDay', 0);
-        $this->RegisterPropertyString('WeeklyReportTime', '{"hour":19,"minute":0,"second":0}');
+        $this->RegisterPropertyBoolean('DailyNotification', true);
+        $this->RegisterPropertyString('DailyNotificationTime', '{"hour":19,"minute":0,"second":0}');
+        $this->RegisterPropertyBoolean('DailyNotificationOnlyOnAlarm', true);
+        $this->RegisterPropertyBoolean('DailyNotificationUsePushNotification', true);
+        $this->RegisterPropertyBoolean('DailyNotificationUseEmailNotification', true);
+        $this->RegisterPropertyBoolean('DailyNotificationUseSMSNotification', true);
+        $this->RegisterPropertyBoolean('WeeklyNotification', false);
+        $this->RegisterPropertyInteger('WeeklyNotificationDay', 0);
+        $this->RegisterPropertyString('WeeklyNotificationTime', '{"hour":19,"minute":0,"second":0}');
+        $this->RegisterPropertyBoolean('WeeklyNotificationOnlyOnAlarm', false);
+        $this->RegisterPropertyBoolean('WeeklyNotificationUsePushNotification', true);
+        $this->RegisterPropertyBoolean('WeeklyNotificationUseEmailNotification', true);
+        $this->RegisterPropertyBoolean('WeeklyNotificationUseSMSNotification', true);
         $this->RegisterPropertyInteger('NotificationScript', 0);
-
-        // Registered Messages
-        $this->RegisterPropertyString('RegisteredMessages', '[]');
     }
 
     private function CreateProfiles(): void
@@ -287,14 +375,14 @@ class Batterieueberwachung extends IPSModule
         }
         IPS_SetVariableProfileAssociation($profileName, 0, 'OK', 'Information', 0x00FF00);
         IPS_SetVariableProfileAssociation($profileName, 1, 'Alarm', 'Warning', 0xFF0000);
-        // Boolean (Homematic, Homematic IP)
+        // Battery boolean
         $profile = 'BAT.Battery.Boolean';
         if (!IPS_VariableProfileExists($profile)) {
             IPS_CreateVariableProfile($profile, 0);
         }
         IPS_SetVariableProfileAssociation($profile, 0, 'OK', 'Information', 0x00FF00);
         IPS_SetVariableProfileAssociation($profile, 1, 'Batterie schwach', 'Battery', 0xFF0000);
-        // Integer
+        // Battery integer
         $profile = 'BAT.Battery.Integer';
         if (!IPS_VariableProfileExists($profile)) {
             IPS_CreateVariableProfile($profile, 1);
@@ -340,15 +428,7 @@ class Batterieueberwachung extends IPSModule
         // Battery replacement
         IPS_SetHidden($this->GetIDForIdent('BatteryReplacement'), !$this->ReadPropertyBoolean('EnableBatteryReplacement'));
         // Battery list
-        $useBatteryList = $this->ReadPropertyBoolean('EnableBatteryList');
-        if ($useBatteryList) {
-            $this->UpdateBatteryList();
-        }
-        IPS_SetHidden($this->GetIDForIdent('BatteryList'), !$useBatteryList);
-        // Attribute
-        if (!$this->ReadPropertyBoolean('ImmediateNotificationMaximumOncePerDay')) {
-            $this->ResetBlacklist();
-        }
+        IPS_SetHidden($this->GetIDForIdent('BatteryList'), !$this->ReadPropertyBoolean('EnableBatteryList'));
     }
 
     private function UnregisterMessages(): void
@@ -373,7 +453,7 @@ class Batterieueberwachung extends IPSModule
         $monitoredVariables = json_decode($this->ReadPropertyString('MonitoredVariables'));
         if (!empty($monitoredVariables)) {
             foreach ($monitoredVariables as $variable) {
-                if ($variable->Use) {
+                if ($variable->CheckBattery) {
                     if ($variable->ID != 0 && @IPS_ObjectExists($variable->ID)) {
                         $this->RegisterMessage($variable->ID, VM_UPDATE);
                     }
@@ -385,35 +465,23 @@ class Batterieueberwachung extends IPSModule
     private function RegisterTimers(): void
     {
         $this->RegisterTimer('ResetBlacklist', 0, 'BAT_ResetBlacklist(' . $this->InstanceID . ');');
-        $this->RegisterTimer('DailyReport', 0, 'BAT_TriggerDailyReport(' . $this->InstanceID . ', true);');
-        $this->RegisterTimer('WeeklyReport', 0, 'BAT_TriggerWeeklyReport(' . $this->InstanceID . ', true, true);');
+        $this->RegisterTimer('DailyNotification', 0, 'BAT_TriggerDailyNotification(' . $this->InstanceID . ', true);');
+        $this->RegisterTimer('WeeklyNotification', 0, 'BAT_TriggerWeeklyNotification(' . $this->InstanceID . ', true, true);');
     }
 
     private function SetResetBlacklistTimer(): void
     {
-        $timerInterval = 0;
-        if ($this->ReadPropertyBoolean('ImmediateNotificationMaximumOncePerDay')) {
-            $timerInterval = $this->GetInterval('ResetBlacklistTime');
-        }
-        $this->SetTimerInterval('ResetBlacklist', $timerInterval);
+        $this->SetTimerInterval('ResetBlacklist', $this->GetInterval('ResetBlacklistTime'));
     }
 
-    private function SetDailyReportTimer(): void
+    private function SetDailyNotificationTimer(): void
     {
-        $timerInterval = 0;
-        if ($this->ReadPropertyBoolean('DailyReport')) {
-            $timerInterval = $this->GetInterval('DailyReportTime');
-        }
-        $this->SetTimerInterval('DailyReport', $timerInterval);
+        $this->SetTimerInterval('DailyNotification', $this->GetInterval('DailyNotificationTime'));
     }
 
-    private function SetWeeklyReportTimer(): void
+    private function SetWeeklyNotificationTimer(): void
     {
-        $timerInterval = 0;
-        if ($this->ReadPropertyBoolean('WeeklyReport')) {
-            $timerInterval = $this->GetInterval('WeeklyReportTime');
-        }
-        $this->SetTimerInterval('WeeklyReport', $timerInterval);
+        $this->SetTimerInterval('WeeklyNotification', $this->GetInterval('WeeklyNotificationTime'));
     }
 
     private function GetInterval(string $PropertyName): int
@@ -434,10 +502,7 @@ class Batterieueberwachung extends IPSModule
 
     private function RegisterAttributes(): void
     {
-        $this->RegisterAttributeString('ImmediateNotificationBlacklist', '[]');
-        $this->RegisterAttributeString('ImmediateNotificationBlacklistLowBattery', '[]');
-        $this->RegisterAttributeString('ImmediateNotificationLowBatteryVariables', '[]');
-        $this->RegisterAttributeString('DailyReportLowBatteryVariables', '[]');
-        $this->RegisterAttributeString('WeeklyReportLowBatteryVariables', '[]');
+        $this->RegisterAttributeString('Blacklist', '{"normalStatus":false,"criticalStatus":false}');
+        $this->RegisterAttributeString('CriticalStateVariables', '{"immediateNotification":[],"dailyNotification":[],"weeklyNotification":[]}');
     }
 }

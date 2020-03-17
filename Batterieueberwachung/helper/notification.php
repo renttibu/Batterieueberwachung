@@ -6,369 +6,283 @@ declare(strict_types=1);
 trait BAT_notification
 {
     /**
-     * Resets the blacklist for immediate notification maximum once per day.
+     * Resets the blacklist for immediate notification.
      */
     public function ResetBlacklist(): void
     {
+        $this->WriteAttributeString('Blacklist', '{"normalStatus":false,"criticalStatus":false}');
         $this->SetResetBlacklistTimer();
-        $this->WriteAttributeString('ImmediateNotificationBlacklistLowBattery', '[]');
-        $this->WriteAttributeString('ImmediateNotificationBlacklist', '[]');
     }
 
     /**
-     * Shows the locked variables for immediate notification.
-     */
-    public function ShowLockedVariables(): void
-    {
-        echo "Batterie schwach:\n";
-        print_r(json_decode($this->ReadAttributeString('ImmediateNotificationBlacklistLowBattery'), true));
-        echo "\n\nBatterie OK:\n";
-        print_r(json_decode($this->ReadAttributeString('ImmediateNotificationBlacklist'), true));
-    }
-
-    /**
-     * Triggers the immediate notification.
+     * Triggers the daily notification.
      *
-     * @param int $SenderID
-     * @param bool $ActualValue
+     * @param bool $ResetCriticalVariables
+     * false    = keep critical variables
+     * true     = reset critical variables
      */
-    public function TriggerImmediateNotification(int $SenderID, bool $ActualValue): void
+    public function TriggerDailyNotification(bool $ResetCriticalVariables): void
     {
-        $timeStamp = date('d.m.Y, H:i:s');
         $this->SendDebug(__FUNCTION__, 'Die Methode wird ausgeführt. (' . microtime(true) . ')', 0);
-        $this->SendDebug(__FUNCTION__, 'Parameter $SenderID = ' . $SenderID, 0);
-        $this->SendDebug(__FUNCTION__, 'Parameter $ActualValue = ' . json_encode($ActualValue), 0);
+        $this->SendDebug(__FUNCTION__, 'Parameter $ResetCriticalVariables = ' . json_encode($ResetCriticalVariables), 0);
+        $this->SetDailyNotificationTimer();
         // Monitoring must be activated
         if (!$this->GetValue('Monitoring')) {
             $this->SendDebug(__FUNCTION__, 'Abbruch, Die Überwachung ist deaktiviert!', 0);
-            return;
         }
-        // Immediate notification must be activated
-        if (!$this->ReadPropertyBoolean('ImmediateNotification')) {
-            $this->SendDebug(__FUNCTION__, 'Abbruch, Die sofortige Benachrichtigung ist deaktiviert!', 0);
-            return;
+        // Daily notification must be activated
+        if (!$this->ReadPropertyBoolean('DailyNotification')) {
+            $this->SendDebug(__FUNCTION__, 'Abbruch, Die tägliche Benachrichtigung ist deaktiviert!', 0);
         }
-        // Variables must exist
-        $monitoredVariables = json_decode($this->ReadPropertyString('MonitoredVariables'), true);
-        if (empty($monitoredVariables)) {
-            $this->SendDebug(__FUNCTION__, 'Abbruch, Es werden keine Variablen überwacht!', 0);
-            return;
-        }
-        $key = array_search($SenderID, array_column($monitoredVariables, 'ID'));
-        $name = $monitoredVariables[$key]['Name'];
-        $address = $monitoredVariables[$key]['Address'];
-        $alertingValue = boolval($monitoredVariables[$key]['AlertingValue']);
-        $lowBattery = false;
-        if ($ActualValue == $alertingValue) {
-            $lowBattery = true;
-            // Immediate attribute
-            $lowBatteryVariable = json_decode($this->ReadAttributeString('ImmediateNotificationLowBatteryVariables'), true);
-            array_push($lowBatteryVariable, ['id' => $SenderID, 'name' => $name, 'timestamp' => $timeStamp, 'address' => $address]);
-            $this->WriteAttributeString('ImmediateNotificationLowBatteryVariables', json_encode($lowBatteryVariable));
-            // Daily attribute
-            if ($this->ReadPropertyBoolean('DailyReport')) {
-                $dailyLowBatteryVariables = json_decode($this->ReadAttributeString('DailyReportLowBatteryVariables'), true);
-                array_push($dailyLowBatteryVariables, ['id' => $SenderID, 'name' => $name, 'timestamp' => $timeStamp, 'address' => $address]);
-                $this->WriteAttributeString('DailyReportLowBatteryVariables', json_encode($dailyLowBatteryVariables));
-            } else {
-                $this->WriteAttributeString('DailyReportLowBatteryVariables', '[]');
+        // Monitoring must be activated
+        if ($this->GetValue('Monitoring')) {
+            // Daily notification must be activated
+            if ($this->ReadPropertyBoolean('DailyNotification')) {
+                // Notification center must be valid
+                $notificationCenter = $this->ReadPropertyInteger('NotificationCenter');
+                if ($notificationCenter != 0 && IPS_ObjectExists($notificationCenter)) {
+                    if (IPS_GetInstance($notificationCenter)['ModuleInfo']['ModuleID'] != self::NOTIFICATION_CENTER_GUID) {
+                        $this->SendDebug(__FUNCTION__, 'Abbruch, Die Benachrichtigungszentrale ist ungültig!', 0);
+                        return;
+                    }
+                    $this->SendDebug(__FUNCTION__, 'Die tägliche Benachrichtigung wird erstellt, Benachrichtigungen werden versendet.', 0);
+                    $notification = true;
+                    $unicode = json_decode('"\ud83d\udfe2"'); // green_circle
+                    $text = 'Batterieüberwachung: ' . $unicode . ' OK!';
+                    $actualStatus = $this->GetValue('Status');
+                    if ($actualStatus) {
+                        $unicode = json_decode('"\ud83d\udd34"'); // red_circle
+                        $text = 'Batterieüberwachung: ' . $unicode . ' Alarm!';
+                    }
+                    if (!$actualStatus && $this->ReadPropertyBoolean('DailyNotificationOnlyOnAlarm')) {
+                        $notification = false;
+                    }
+                    if ($notification) {
+                        $location = $this->ReadPropertyString('Location');
+                        $timeStamp = date('d.m.Y, H:i:s');
+                        // Push notification
+                        if ($this->ReadPropertyBoolean('DailyNotificationUsePushNotification')) {
+                            $pushTitle = substr($location, 0, 32);
+                            $pushText = "\n" . $text . "\n" . $timeStamp;
+                            @BENA_SendPushNotification($notificationCenter, $pushTitle, $pushText, 4);
+                        }
+                        // Email notification
+                        if ($this->ReadPropertyBoolean('DailyNotificationUseEmailNotification')) {
+                            $emailSubject = 'Batterieüberwachung ' . $location . ', Tagesbericht vom ' . $timeStamp;
+                            $emailText = $this->CreateEmailReportText(1);
+                            @BENA_SendEMailNotification($notificationCenter, $emailSubject, $emailText, 4);
+                        }
+                        // SMS Notification
+                        if ($this->ReadPropertyBoolean('DailyNotificationUseSMSNotification')) {
+                            $smsText = $location . "\n" . $text . "\n" . $timeStamp;
+                            @BENA_SendSMSNotification($notificationCenter, $smsText, 4);
+                        }
+                    }
+                }
             }
-            // Weekly attribute
-            if ($this->ReadPropertyBoolean('WeeklyReport')) {
-                $weeklyLowBatteryVariables = json_decode($this->ReadAttributeString('WeeklyReportLowBatteryVariables'), true);
-                array_push($weeklyLowBatteryVariables, ['id' => $SenderID, 'name' => $name, 'timestamp' => $timeStamp, 'address' => $address]);
-                $this->WriteAttributeString('WeeklyReportLowBatteryVariables', json_encode($weeklyLowBatteryVariables));
-            } else {
-                $this->WriteAttributeString('WeeklyReportLowBatteryVariables', '[]');
-            }
         }
-        // Notification center must be valid
-        $notificationCenter = $this->ReadPropertyInteger('NotificationCenter');
-        if ($notificationCenter != 0 && IPS_ObjectExists($notificationCenter)) {
-            $this->SendDebug(__FUNCTION__, 'Die sofortigen Benachrichtigungen werden versendet.', 0);
-            $location = $this->ReadPropertyString('Location');
-            // Battery is ok
-            if (!$lowBattery) {
-                // Notification is allowed
-                if (!$this->ReadPropertyBoolean('ImmediateNotificationOnlyWeakBattery')) {
-                    // Check maximum notification per day
-                    $blacklisted = false;
-                    if ($this->ReadPropertyBoolean('ImmediateNotificationMaximumOncePerDay')) {
-                        $blacklist = json_decode($this->ReadAttributeString('ImmediateNotificationBlacklist'), true);
-                        if (!empty($blacklist)) {
-                            if (in_array($SenderID, $blacklist)) {
-                                $this->SendDebug(__FUNCTION__, 'Keine Benachrichtigungen, Variable ist auf der Sperrliste!', 0);
-                                $blacklisted = true;
+        if ($ResetCriticalVariables) {
+            $this->ResetCriticalVariablesForDailyNotification();
+        }
+    }
+
+    /**
+     * Resets the critical variables for daily notification.
+     */
+    public function ResetCriticalVariablesForDailyNotification(): void
+    {
+        $criticalStateVariables = json_decode($this->ReadAttributeString('CriticalStateVariables'), true);
+        array_splice($criticalStateVariables['dailyNotification'], 0);
+        $this->WriteAttributeString('CriticalStateVariables', json_encode($criticalStateVariables));
+    }
+
+    /**
+     * Triggers the weekly notification.
+     *
+     * @param bool $CheckDay
+     * false    = trigger notification
+     * true     = check weekday
+     *
+     * @param bool $ResetCriticalVariables
+     * false    = keep critical variables
+     * true     = reset critical variables
+     */
+    public function TriggerWeeklyNotification(bool $CheckDay, bool $ResetCriticalVariables): void
+    {
+        $this->SendDebug(__FUNCTION__, 'Die Methode wird ausgeführt. (' . microtime(true) . ')', 0);
+        $this->SendDebug(__FUNCTION__, 'Parameter $CheckDay = ' . json_encode($CheckDay), 0);
+        $this->SendDebug(__FUNCTION__, 'Parameter $ResetCriticalVariables = ' . json_encode($ResetCriticalVariables), 0);
+        $this->SetWeeklyNotificationTimer();
+        // Monitoring must be activated
+        if (!$this->GetValue('Monitoring')) {
+            $this->SendDebug(__FUNCTION__, 'Abbruch, Die Überwachung ist deaktiviert!', 0);
+        }
+        // Weekly notification must be activated
+        if (!$this->ReadPropertyBoolean('WeeklyNotification')) {
+            $this->SendDebug(__FUNCTION__, 'Abbruch, Die tägliche Benachrichtigung ist deaktiviert!', 0);
+        }
+        // Check weekday
+        $weekday = date('w');
+        if ($weekday == $this->ReadPropertyInteger('WeeklyNotificationDay') || !$CheckDay) {
+            // Monitoring must be activated
+            if ($this->GetValue('Monitoring')) {
+                // Weekly notification must be activated
+                if ($this->ReadPropertyBoolean('WeeklyNotification')) {
+                    // Notification center must be valid
+                    $notificationCenter = $this->ReadPropertyInteger('NotificationCenter');
+                    if ($notificationCenter != 0 && IPS_ObjectExists($notificationCenter)) {
+                        if (IPS_GetInstance($notificationCenter)['ModuleInfo']['ModuleID'] != self::NOTIFICATION_CENTER_GUID) {
+                            $this->SendDebug(__FUNCTION__, 'Abbruch, Die Benachrichtigungszentrale ist ungültig!', 0);
+                            return;
+                        }
+                        $this->SendDebug(__FUNCTION__, 'Die wöchentliche Benachrichtigung wird erstellt, Benachrichtigungen werden versendet.', 0);
+                        $notification = true;
+                        $unicode = json_decode('"\ud83d\udfe2"'); // green_circle
+                        $text = 'Batterieüberwachung: ' . $unicode . ' OK!';
+                        $actualStatus = $this->GetValue('Status');
+                        if ($actualStatus) {
+                            $unicode = json_decode('"\ud83d\udd34"'); // red_circle
+                            $text = 'Batterieüberwachung: ' . $unicode . ' Alarm!';
+                        }
+                        if (!$actualStatus && $this->ReadPropertyBoolean('WeeklyNotificationOnlyOnAlarm')) {
+                            $notification = false;
+                        }
+                        if ($notification) {
+                            $location = $this->ReadPropertyString('Location');
+                            $timeStamp = date('d.m.Y, H:i:s');
+                            // Push notification
+                            if ($this->ReadPropertyBoolean('WeeklyNotificationUsePushNotification')) {
+                                $pushTitle = substr($location, 0, 32);
+                                $pushText = "\n" . $text . "\n" . $timeStamp;
+                                @BENA_SendPushNotification($notificationCenter, $pushTitle, $pushText, 4);
+                            }
+                            // Email notification
+                            if ($this->ReadPropertyBoolean('WeeklyNotificationUseEmailNotification')) {
+                                $emailSubject = 'Batterieüberwachung ' . $location . ', Wochenbericht vom ' . $timeStamp;
+                                $emailText = $this->CreateEmailReportText(2);
+                                @BENA_SendEMailNotification($notificationCenter, $emailSubject, $emailText, 4);
+                            }
+                            // SMS Notification
+                            if ($this->ReadPropertyBoolean('WeeklyNotificationUseSMSNotification')) {
+                                $smsText = $location . "\n" . $text . "\n" . $timeStamp;
+                                @BENA_SendSMSNotification($notificationCenter, $smsText, 4);
                             }
                         }
                     }
-                    if (!$blacklisted) {
-                        // Push notification
-                        if ($this->ReadPropertyBoolean('ImmediateNotificationUsePushNotification')) {
-                            $pushTitle = substr($location, 0, 32);
-                            $pushText = "\nBatterie OK!\n" . $name . ' (ID ' . $SenderID . ') ' . $timeStamp;
-                            @BENA_SendPushNotification($notificationCenter, $pushTitle, $pushText, 4);
-                        }
-                        // Email notification
-                        if ($this->ReadPropertyBoolean('ImmediateNotificationUseEmailNotification')) {
-                            $emailSubject = 'Batterieüberwachung ' . $location;
-                            $emailText = $this->CreateEmailReportText(0);
-                            @BENA_SendEMailNotification($notificationCenter, $emailSubject, $emailText, 4);
-                        }
-                        // SMS Notification
-                        if ($this->ReadPropertyBoolean('ImmediateNotificationUseSMSNotification')) {
-                            $smsText = $location . "\nBatterie OK!\n" . $name . ' (ID ' . $SenderID . ') ' . $timeStamp;
-                            @BENA_SendSMSNotification($notificationCenter, $smsText, 4);
-                        }
-                    }
-                }
-            } // Battery is weak
-            else {
-                $blacklisted = false;
-                // Check maximum notification per day
-                if ($this->ReadPropertyBoolean('ImmediateNotificationMaximumOncePerDay')) {
-                    $blacklist = json_decode($this->ReadAttributeString('ImmediateNotificationBlacklistLowBattery'), true);
-                    if (!empty($blacklist)) {
-                        if (in_array($SenderID, $blacklist)) {
-                            $this->SendDebug(__FUNCTION__, 'Keine Benachrichtigungen, Variable ist auf der Sperrliste!', 0);
-                            $blacklisted = true;
-                        }
-                    }
-                }
-                if (!$blacklisted) {
-                    // Push notification
-                    if ($this->ReadPropertyBoolean('ImmediateNotificationUsePushNotification')) {
-                        $pushTitle = substr($location, 0, 32);
-                        $pushText = "\nBatterie schwach!\n" . $name . ' (ID ' . $SenderID . ') ' . $timeStamp;
-                        @BENA_SendPushNotification($notificationCenter, $pushTitle, $pushText, 4);
-                    }
-                    // Email notification
-                    if ($this->ReadPropertyBoolean('ImmediateNotificationUseEmailNotification')) {
-                        $emailSubject = 'Batterieüberwachung ' . $location;
-                        $emailText = $this->CreateEmailReportText(0);
-                        @BENA_SendEMailNotification($notificationCenter, $emailSubject, $emailText, 4);
-                    }
-                    // SMS notification
-                    if ($this->ReadPropertyBoolean('ImmediateNotificationUseSMSNotification')) {
-                        $smsText = $location . "\nBatterie schwach!\n" . $name . ' (ID ' . $SenderID . ') ' . $timeStamp;
-                        @BENA_SendSMSNotification($notificationCenter, $smsText, 4);
-                    }
                 }
             }
-        }
-        // Attributes
-        if ($lowBattery) {
-            $blacklist = json_decode($this->ReadAttributeString('ImmediateNotificationBlacklistLowBattery'), true);
-            if (!in_array($SenderID, $blacklist)) {
-                array_push($blacklist, $SenderID);
-            }
-            $this->WriteAttributeString('ImmediateNotificationBlacklistLowBattery', json_encode($blacklist));
-        } else {
-            $blacklist = json_decode($this->ReadAttributeString('ImmediateNotificationBlacklist'), true);
-            if (!in_array($SenderID, $blacklist)) {
-                array_push($blacklist, $SenderID);
-            }
-            $this->WriteAttributeString('ImmediateNotificationBlacklist', json_encode($blacklist));
-        }
-        $this->WriteAttributeString('ImmediateNotificationLowBatteryVariables', '[]');
-    }
-
-    /**
-     * Resets the attribute for the daily report.
-     */
-    public function ResetDailyReportAttribute(): void
-    {
-        $this->SendDebug(__FUNCTION__, 'Die Methode wird ausgeführt. (' . microtime(true) . ')', 0);
-        $this->WriteAttributeString('DailyReportLowBatteryVariables', '[]');
-    }
-
-    /**
-     * Triggers the daily report.
-     *
-     * @param bool $ResetAttribute
-     */
-    public function TriggerDailyReport(bool $ResetAttribute): void
-    {
-        $timeStamp = date('d.m.Y, H:i:s');
-        $this->SendDebug(__FUNCTION__, 'Die Methode wird ausgeführt. (' . microtime(true) . ')', 0);
-        $this->SendDebug(__FUNCTION__, 'Parameter $ResetAttribute = ' . json_encode($ResetAttribute), 0);
-        $this->SetDailyReportTimer();
-        // Monitoring must be activated
-        if (!$this->GetValue('Monitoring')) {
-            $this->SendDebug(__FUNCTION__, 'Abbruch, Die Überwachung ist deaktiviert!', 0);
-            return;
-        }
-        // Daily report must be activated
-        if (!$this->ReadPropertyBoolean('DailyReport')) {
-            $this->SendDebug(__FUNCTION__, 'Abbruch, Der Tagesbericht ist deaktiviert!', 0);
-            return;
-        }
-        // Notification center must be valid
-        $notificationCenter = $this->ReadPropertyInteger('NotificationCenter');
-        if ($notificationCenter != 0 && IPS_ObjectExists($notificationCenter)) {
-            $this->SendDebug(__FUNCTION__, 'Der Tagesbericht wird erstellt, Benachrichtigungen werden versendet.', 0);
-            $date = date('d.m.Y');
-            $location = $this->ReadPropertyString('Location');
-            $dailyLowBatteryVariables = json_decode($this->ReadAttributeString('DailyReportLowBatteryVariables'), true);
-            // All batteries are ok
-            if (empty($dailyLowBatteryVariables)) {
-                // Notification is allowed
-                if (!$this->ReadPropertyBoolean('DailyReportOnlyWeakBattery')) {
-                    // Push notification
-                    if ($this->ReadPropertyBoolean('DailyReportUsePushNotification')) {
-                        $pushTitle = substr($location, 0, 32);
-                        $pushText = "\nAlle Batterien OK!\n" . $timeStamp;
-                        @BENA_SendPushNotification($notificationCenter, $pushTitle, $pushText, 4);
-                    }
-                    // Email notification
-                    if ($this->ReadPropertyBoolean('DailyReportUseEmailNotification')) {
-                        $emailSubject = 'Batterieüberwachung ' . $location . ', Tagesbericht vom ' . $date;
-                        $emailText = $this->CreateEmailReportText(1);
-                        @BENA_SendEMailNotification($notificationCenter, $emailSubject, $emailText, 4);
-                    }
-                    // SMS Notification
-                    if ($this->ReadPropertyBoolean('DailyReportUseSMSNotification')) {
-                        $smsText = $location . "\nAlle Batterien OK!\n" . $timeStamp;
-                        @BENA_SendSMSNotification($notificationCenter, $smsText, 4);
-                    }
-                }
-            } // Battery is weak
-            else {
-                // Push notification
-                if ($this->ReadPropertyBoolean('DailyReportUsePushNotification')) {
-                    foreach ($dailyLowBatteryVariables as $variable) {
-                        $pushTitle = substr($location, 0, 32);
-                        $pushText = "\nBatterie schwach!\n" . $variable['name'] . ' (ID ' . $variable['id'] . ') ' . $timeStamp;
-                        @BENA_SendPushNotification($notificationCenter, $pushTitle, $pushText, 4);
-                    }
-                }
-                // Email notification
-                if ($this->ReadPropertyBoolean('DailyReportUseEmailNotification')) {
-                    $emailSubject = 'Batterieüberwachung ' . $location . ', Tagesbericht vom ' . $date;
-                    $emailText = $this->CreateEmailReportText(1);
-                    @BENA_SendEMailNotification($notificationCenter, $emailSubject, $emailText, 4);
-                }
-                // SMS notification
-                if ($this->ReadPropertyBoolean('DailyReportUseSMSNotification')) {
-                    foreach ($dailyLowBatteryVariables as $variable) {
-                        $smsText = $location . "\nBatterie schwach!\n" . $variable['name'] . ' (ID ' . $variable['id'] . ') ' . $timeStamp;
-                        @BENA_SendSMSNotification($notificationCenter, $smsText, 4);
-                    }
-                }
-            }
-            if ($ResetAttribute) {
-                $this->ResetDailyReportAttribute();
+            if ($ResetCriticalVariables) {
+                $this->ResetCriticalVariablesForWeeklyNotification();
             }
         }
     }
 
     /**
-     * Resets the attribute for the weekly report.
+     * Resets the critical variables for weekly notification.
      */
-    public function ResetWeeklyReportAttribute(): void
+    public function ResetCriticalVariablesForWeeklyNotification(): void
     {
-        $this->SendDebug(__FUNCTION__, 'Die Methode wird ausgeführt. (' . microtime(true) . ')', 0);
-        $this->WriteAttributeString('WeeklyReportLowBatteryVariables', '[]');
-    }
-
-    /**
-     * Triggers the weekly report.
-     *
-     * @param bool $CheckDay
-     * false    = trigger report
-     * true     = check weekday
-     *
-     * @param bool $ResetAttribute
-     * false    = keep attributes
-     * true     = reset attributes
-     */
-    public function TriggerWeeklyReport(bool $CheckDay, bool $ResetAttribute): void
-    {
-        $timeStamp = date('d.m.Y, H:i:s');
-        $this->SendDebug(__FUNCTION__, 'Die Methode wird ausgeführt. (' . microtime(true) . ')', 0);
-        $this->SendDebug(__FUNCTION__, 'Parameter $CheckDay = ' . json_encode($CheckDay), 0);
-        $this->SendDebug(__FUNCTION__, 'Parameter $ResetAttribute = ' . json_encode($ResetAttribute), 0);
-        $this->SetWeeklyReportTimer();
-        // Monitoring must be activated
-        if (!$this->GetValue('Monitoring')) {
-            $this->SendDebug(__FUNCTION__, 'Abbruch, Die Überwachung ist deaktiviert!', 0);
-            return;
-        }
-        // Weekly report must be activated
-        if (!$this->ReadPropertyBoolean('WeeklyReport')) {
-            $this->SendDebug(__FUNCTION__, 'Abbruch, Wochenbericht ist deaktiviert!', 0);
-            return;
-        }
-        $weekday = date('w');
-        if ($weekday == $this->ReadPropertyInteger('WeeklyReportDay') || !$CheckDay) {
-            $notificationCenter = $this->ReadPropertyInteger('NotificationCenter');
-            if ($notificationCenter != 0 && IPS_ObjectExists($notificationCenter)) {
-                $this->SendDebug(__FUNCTION__, 'Der Wochenbericht wird erstellt, Benachrichtigungen werden versendet.', 0);
-                $date = date('d.m.Y');
-                $location = $this->ReadPropertyString('Location');
-                $weeklyLowBatteryVariables = json_decode($this->ReadAttributeString('WeeklyReportLowBatteryVariables'), true);
-                // All batteries are ok
-                if (empty($weeklyLowBatteryVariables)) {
-                    // Notification is allowed
-                    if (!$this->ReadPropertyBoolean('WeeklyReportOnlyWeakBattery')) {
-                        // Push notification
-                        if ($this->ReadPropertyBoolean('WeeklyReportUsePushNotification')) {
-                            $pushTitle = substr($location, 0, 32);
-                            $pushText = "\nAlle Batterien OK!\n" . $timeStamp;
-                            @BENA_SendPushNotification($notificationCenter, $pushTitle, $pushText, 4);
-                        }
-                        // Email notification
-                        if ($this->ReadPropertyBoolean('WeeklyReportUseEmailNotification')) {
-                            $emailSubject = 'Batterieüberwachung ' . $location . ', Wochenbericht vom ' . $date;
-                            $emailText = $this->CreateEmailReportText(2);
-                            @BENA_SendEMailNotification($notificationCenter, $emailSubject, $emailText, 4);
-                        }
-                        // SMS Notification
-                        if ($this->ReadPropertyBoolean('WeeklyReportUseSMSNotification')) {
-                            $smsText = $location . "\nAlle Batterien OK!\n" . $timeStamp;
-                            @BENA_SendSMSNotification($notificationCenter, $smsText, 4);
-                        }
-                    }
-                } // Battery is weak
-                else {
-                    // Push notification
-                    if ($this->ReadPropertyBoolean('WeeklyReportUsePushNotification')) {
-                        foreach ($weeklyLowBatteryVariables as $variable) {
-                            $pushTitle = substr($location, 0, 32);
-                            $pushText = "\nBatterie schwach!\n" . $variable['name'] . ' (ID ' . $variable['id'] . ') ' . $timeStamp;
-                            @BENA_SendPushNotification($notificationCenter, $pushTitle, $pushText, 4);
-                        }
-                    }
-                    // Email notification
-                    if ($this->ReadPropertyBoolean('WeeklyReportUseEmailNotification')) {
-                        $emailSubject = 'Batterieüberwachung ' . $location . ', Wochenbericht vom ' . $date;
-                        $emailText = $this->CreateEmailReportText(2);
-                        @BENA_SendEMailNotification($notificationCenter, $emailSubject, $emailText, 4);
-                    }
-                    // SMS notification
-                    if ($this->ReadPropertyBoolean('WeeklyReportUseSMSNotification')) {
-                        foreach ($weeklyLowBatteryVariables as $variable) {
-                            $smsText = $location . "\nBatterie schwach!\n" . $variable['name'] . ' (ID ' . $variable['id'] . ') ' . $timeStamp;
-                            @BENA_SendSMSNotification($notificationCenter, $smsText, 4);
-                        }
-                    }
-                }
-            }
-            if ($ResetAttribute) {
-                $this->ResetWeeklyReportAttribute();
-            }
-        }
+        $criticalStateVariables = json_decode($this->ReadAttributeString('CriticalStateVariables'), true);
+        array_splice($criticalStateVariables['weeklyNotification'], 0);
+        $this->WriteAttributeString('CriticalStateVariables', json_encode($criticalStateVariables));
     }
 
     //#################### Private
 
     /**
+     * Triggers the immediate notification.
+     */
+    private function TriggerImmediateNotification(): void
+    {
+        $this->SendDebug(__FUNCTION__, 'Die Methode wird ausgeführt. (' . microtime(true) . ')', 0);
+        // Monitoring must be activated
+        if (!$this->GetValue('Monitoring')) {
+            $this->ResetCriticalVariablesForImmediateNotification();
+            $this->SendDebug(__FUNCTION__, 'Abbruch, Die Überwachung ist deaktiviert!', 0);
+            return;
+        }
+        // Immediate notification must be activated
+        if (!$this->ReadPropertyBoolean('ImmediateNotification')) {
+            $this->ResetCriticalVariablesForImmediateNotification();
+            $this->SendDebug(__FUNCTION__, 'Abbruch, Die sofortige Benachrichtigung ist deaktiviert!', 0);
+            return;
+        }
+        // Notification center must be valid
+        $notificationCenter = $this->ReadPropertyInteger('NotificationCenter');
+        if ($notificationCenter != 0 && IPS_ObjectExists($notificationCenter)) {
+            if (IPS_GetInstance($notificationCenter)['ModuleInfo']['ModuleID'] != self::NOTIFICATION_CENTER_GUID) {
+                $this->SendDebug(__FUNCTION__, 'Abbruch, Die Benachrichtigungszentrale ist ungültig!', 0);
+                return;
+            }
+            $this->SendDebug(__FUNCTION__, 'Die sofortige Benachrichtigung wird erstellt, Benachrichtigungen werden versendet.', 0);
+            $unicode = json_decode('"\ud83d\udfe2"'); // green_circle
+            $text = 'Batterieüberwachung: ' . $unicode . ' OK!';
+            $actualStatus = $this->GetValue('Status');
+            if ($actualStatus) {
+                $unicode = json_decode('"\ud83d\udd34"'); // red_circle
+                $text = 'Batterieüberwachung: ' . $unicode . ' Alarm!';
+            }
+            if (!$actualStatus && $this->ReadPropertyBoolean('ImmediateNotificationOnlyOnAlarm')) {
+                return;
+            }
+            $blacklist = json_decode($this->ReadAttributeString('Blacklist'), true);
+            if ($this->ReadPropertyBoolean('ImmediateNotificationMaximumOncePerDay')) {
+                $normalStatus = $blacklist['normalStatus'];
+                if (!$actualStatus && $normalStatus) {
+                    return;
+                }
+                if (!$actualStatus && !$normalStatus) {
+                    $blacklist['normalStatus'] = true;
+                }
+                $criticalStatus = $blacklist['criticalStatus'];
+                if ($actualStatus && $criticalStatus) {
+                    return;
+                }
+                if ($actualStatus && !$criticalStatus) {
+                    $blacklist['criticalStatus'] = true;
+                }
+            }
+            $location = $this->ReadPropertyString('Location');
+            $timeStamp = date('d.m.Y, H:i:s');
+            // Push notification
+            if ($this->ReadPropertyBoolean('ImmediateNotificationUsePushNotification')) {
+                $pushTitle = substr($location, 0, 32);
+                $pushText = "\n" . $text . "\n" . $timeStamp;
+                @BENA_SendPushNotification($notificationCenter, $pushTitle, $pushText, 4);
+            }
+            // Email notification
+            if ($this->ReadPropertyBoolean('ImmediateNotificationUseEmailNotification')) {
+                $emailSubject = 'Batterieüberwachung ' . $location . ', Sofortige Benachrichtigung vom ' . $timeStamp;
+                $emailText = $this->CreateEmailReportText(0);
+                @BENA_SendEMailNotification($notificationCenter, $emailSubject, $emailText, 4);
+            }
+            // SMS Notification
+            if ($this->ReadPropertyBoolean('ImmediateNotificationUseSMSNotification')) {
+                $smsText = $location . "\n" . $text . "\n" . $timeStamp;
+                @BENA_SendSMSNotification($notificationCenter, $smsText, 4);
+            }
+            $this->WriteAttributeString('Blacklist', json_encode($blacklist));
+            $this->ResetCriticalVariablesForImmediateNotification();
+        }
+    }
+
+    /**
+     * Resets the critical variables for immediate notification.
+     */
+    private function ResetCriticalVariablesForImmediateNotification(): void
+    {
+        $criticalStateVariables = json_decode($this->ReadAttributeString('CriticalStateVariables'), true);
+        array_splice($criticalStateVariables['immediateNotification'], 0);
+        $this->WriteAttributeString('CriticalStateVariables', json_encode($criticalStateVariables));
+    }
+
+    /**
      * Creates the email report text.
      *
      * @param int $NotificationType
-     * 0    = Immediate notification
-     * 1    = Daily report
-     * 2    = Weekly report
+     * 0    = immediate notification
+     * 1    = daily notification
+     * 2    = weekly notification
      *
      * @return string
      */
@@ -376,56 +290,149 @@ trait BAT_notification
     {
         $this->SendDebug(__FUNCTION__, 'Die Methode wird ausgeführt. (' . microtime(true) . ')', 0);
         $this->SendDebug(__FUNCTION__, 'Parameter $NotificationType = ' . json_encode($NotificationType), 0);
+        $criticalStateVariables = json_decode($this->ReadAttributeString('CriticalStateVariables'), true);
         switch ($NotificationType) {
             // Immediate notification
             case 0:
-                $lowBatteryVariables = json_decode($this->ReadAttributeString('ImmediateNotificationLowBatteryVariables'), true);
+                $criticalVariables = $criticalStateVariables['immediateNotification'];
                 break;
 
-            // Daily report
+            // Daily notification
             case 1:
-                $lowBatteryVariables = json_decode($this->ReadAttributeString('DailyReportLowBatteryVariables'), true);
+                $criticalVariables = $criticalStateVariables['dailyNotification'];
                 break;
 
-            // Weekly report
+            // Weekly notification
             case 2:
-                $lowBatteryVariables = json_decode($this->ReadAttributeString('WeeklyReportLowBatteryVariables'), true);
+                $criticalVariables = $criticalStateVariables['weeklyNotification'];
                 break;
 
         }
-        $text = "Aktueller Batteriestatus:\n\n" . GetValueFormatted($this->GetIDForIdent('Status')) . "\n\n\n\n";
-        if (!empty($lowBatteryVariables)) {
-            $text .= "Batterie schwach:\n\n";
+        $statusValue = $this->GetValue('Status');
+        $unicode = json_decode('"\u2705"'); // white_check_mark
+        if ($statusValue) {
+            $unicode = json_decode('"\ud83d\udea8"'); // rotating_light
+        }
+        $statusText = GetValueFormatted($this->GetIDForIdent('Status'));
+        $text = "Aktueller Batteriestatus:\n\n" . $unicode . ' ' . $statusText . "\n";
+        // Variables with a critical state exist
+        if (!empty($criticalVariables)) {
             // Sort variables by name
-            usort($lowBatteryVariables, function ($a, $b)
+            usort($criticalVariables, function ($a, $b)
             {
                 return $a['name'] <=> $b['name'];
             });
             // Rebase array
-            $lowBatteryVariables = array_values($lowBatteryVariables);
-            foreach ($lowBatteryVariables as $variable) {
-                $text .= $logText = $variable['timestamp'] . ',  ID: ' . $variable['id'] . ',  ' . $variable['name'] . ',  Adresse: ' . $variable['address'] . "\n";
+            $criticalVariables = array_values($criticalVariables);
+            // Update overdue first
+            $updateOverviewAmount = 0;
+            foreach ($criticalVariables as $variable) {
+                if ($variable['actualStatus'] == 2) {
+                    $updateOverviewAmount++;
+                }
             }
-            $text .= "\n\n\n\n";
+            if ($updateOverviewAmount > 0) {
+                $unicode = json_decode('"\u2757"'); // heavy_exclamation_mark
+                $text .= "\n\n\n\n";
+                $text .= "Überfällige Aktualisierung:\n\n";
+                foreach ($criticalVariables as $variable) {
+                    if ($variable['actualStatus'] == 2) {
+                        $text .= $unicode . ' ' . $variable['name'] . ' (ID ' . $variable['id'] . ', ' . $variable['comment'] . ', ' . $variable['timestamp'] . ")\n";
+                    }
+                }
+            }
+            // Low battery next
+            $lowBatteryAmount = 0;
+            foreach ($criticalVariables as $variable) {
+                if ($variable['actualStatus'] == 1) {
+                    $lowBatteryAmount++;
+                }
+            }
+            if ($lowBatteryAmount > 0) {
+                $unicode = json_decode('"\u26a0\ufe0f"'); // warning
+                $text .= "\n\n\n\n";
+                $text .= "Schwache Batterie:\n\n";
+                foreach ($criticalVariables as $variable) {
+                    if ($variable['actualStatus'] == 1) {
+                        $text .= $unicode . ' ' . $variable['name'] . ' (ID ' . $variable['id'] . ', ' . $variable['comment'] . ', ' . $variable['timestamp'] . ")\n";
+                    }
+                }
+            }
         }
+        // Battery OK
         $monitoredVariables = json_decode($this->ReadPropertyString('MonitoredVariables'), true);
         if (!empty($monitoredVariables)) {
-            // Sort variables by name
             usort($monitoredVariables, function ($a, $b)
             {
                 return $a['Name'] <=> $b['Name'];
             });
-            // Rebase array
             $monitoredVariables = array_values($monitoredVariables);
-            $text .= "Batterie OK:\n\n";
-            $timeStamp = date('d.m.Y, H:i:s');
+            $variableAmount = 0;
             foreach ($monitoredVariables as $variable) {
                 $id = $variable['ID'];
-                if (IPS_ObjectExists($id) && $variable['Use']) {
-                    $actualValue = boolval(GetValue($id));
-                    $alertingValue = boolval($variable['AlertingValue']);
-                    if ($actualValue != $alertingValue) {
-                        $text .= $timeStamp . ',  ID: ' . $id . ',  ' . $variable['Name'] . ',  Adresse: ' . $variable['Address'] . "\n";
+                if ($id != 0 && IPS_ObjectExists($id)) {
+                    // Check low battery
+                    $lowBattery = true;
+                    if ($variable['CheckBattery']) {
+                        $actualValue = boolval(GetValue($id));
+                        $alertingValue = boolval($variable['AlertingValue']);
+                        if ($actualValue != $alertingValue) {
+                            $lowBattery = false;
+                        }
+                    } else {
+                        $lowBattery = false;
+                    }
+                    // Check update overdue
+                    $updateOverdue = true;
+                    if ($variable['CheckUpdate']) {
+                        $now = time();
+                        $variableUpdate = IPS_GetVariable($id)['VariableUpdated'];
+                        $dateDifference = ($now - $variableUpdate) / (60 * 60 * 24);
+                        if ($dateDifference <= $variable['UpdatePeriod']) {
+                            $updateOverdue = false;
+                        }
+                    } else {
+                        $updateOverdue = false;
+                    }
+                    if (!$lowBattery && !$updateOverdue) {
+                        $variableAmount++;
+                    }
+                }
+            }
+            if ($variableAmount > 0) {
+                $unicode = json_decode('"\u2705"'); // white_check_mark
+                $text .= "\n\n\n\n";
+                $text .= "Batterie OK:\n\n";
+                $timeStamp = date('d.m.Y, H:i:s');
+                foreach ($monitoredVariables as $variable) {
+                    $id = $variable['ID'];
+                    if ($id != 0 && IPS_ObjectExists($id)) {
+                        // Check low battery
+                        $lowBattery = true;
+                        if ($variable['CheckBattery']) {
+                            $actualValue = boolval(GetValue($id));
+                            $alertingValue = boolval($variable['AlertingValue']);
+                            if ($actualValue != $alertingValue) {
+                                $lowBattery = false;
+                            }
+                        } else {
+                            $lowBattery = false;
+                        }
+                        // Check update overdue
+                        $updateOverdue = true;
+                        if ($variable['CheckUpdate']) {
+                            $now = time();
+                            $variableUpdate = IPS_GetVariable($id)['VariableUpdated'];
+                            $dateDifference = ($now - $variableUpdate) / (60 * 60 * 24);
+                            if ($dateDifference <= $variable['UpdatePeriod']) {
+                                $updateOverdue = false;
+                            }
+                        } else {
+                            $updateOverdue = false;
+                        }
+                        if (!$lowBattery && !$updateOverdue) {
+                            $text .= $unicode . ' ' . $variable['Name'] . ' (ID ' . $id . ', ' . $variable['Comment'] . ', ' . $timeStamp . ")\n";
+                        }
                     }
                 }
             }

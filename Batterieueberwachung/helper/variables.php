@@ -6,61 +6,249 @@ declare(strict_types=1);
 trait BAT_variables
 {
     /**
-     * Determines the variables automatically.
+     * Checks the overall status for low battery and update overdue.
+     *
+     * @param int $Mode
+     * 0    = immediate notification
+     * 1    = daily notification
+     * 2    = weekly notification
      */
-    public function DetermineVariables(): void
+    public function CheckMonitoredVariables(int $Mode): void
     {
         $this->SendDebug(__FUNCTION__, 'Die Methode wird ausgeführt. (' . microtime(true) . ')', 0);
-        $listedVariables = [];
-        $instanceIDs = @IPS_GetInstanceListByModuleID(self::HOMEMATIC_DEVICE_GUID);
-        $date = '{"year":0, "month":0, "day":0}';
-        if (!empty($instanceIDs)) {
+        $actualOverallStatus = false;
+        // Check for existing variables
+        if (!$this->CheckForExistingVariables()) {
+            $this->SetValue('Status', $actualOverallStatus);
+            $this->SendDebug(__FUNCTION__, 'Abbruch, es werden keine Variablen überwacht!', 0);
+            return;
+        }
+        $timeStamp = date('d.m.Y, H:i:s');
+        $batteryList = [];
+        // Check variables
+        $monitoredVariables = json_decode($this->ReadPropertyString('MonitoredVariables'), true);
+        if (!empty($monitoredVariables)) {
+            foreach ($monitoredVariables as $variable) {
+                $id = $variable['ID'];
+                $name = $variable['Name'];
+                $comment = $variable['Comment'];
+                if ($id != 0 && IPS_ObjectExists($id)) {
+                    /*
+                     * 0    = normal
+                     * 1    = low battery
+                     * 2    = update overdue
+                     */
+                    $actualStatus = 0;
+                    $unicode = json_decode('"\u2705"'); // white_check_mark
+                    // Check for low battery
+                    if ($variable['CheckBattery']) {
+                        $actualValue = boolval(GetValue($id));
+                        $alertingValue = boolval($variable['AlertingValue']);
+                        if ($actualValue == $alertingValue) {
+                            $actualStatus = 1;
+                            $unicode = json_decode('"\u26a0\ufe0f"'); // warning
+                            $actualOverallStatus = true;
+                        }
+                    }
+                    // Check for update overdue
+                    if ($variable['CheckUpdate']) {
+                        $now = time();
+                        $variableUpdate = IPS_GetVariable($id)['VariableUpdated'];
+                        $dateDifference = ($now - $variableUpdate) / (60 * 60 * 24);
+                        if ($dateDifference > $variable['UpdatePeriod']) {
+                            $actualStatus = 2;
+                            $unicode = json_decode('"\u2757"'); // heavy_exclamation_mark
+                            $actualOverallStatus = true;
+                        }
+                    }
+                    // Last battery replacement
+                    $lastBatteryReplacement = 'Nie';
+                    $replacementDate = json_decode($variable['LastBatteryReplacement']);
+                    $lastBatteryReplacementYear = $replacementDate->year;
+                    $lastBatteryReplacementMonth = $replacementDate->month;
+                    $lastBatteryReplacementDay = $replacementDate->day;
+                    if ($lastBatteryReplacementYear != 0 && $lastBatteryReplacementMonth != 0 && $lastBatteryReplacementDay != 0) {
+                        $lastBatteryReplacement = $lastBatteryReplacementDay . '.' . $lastBatteryReplacementMonth . '.' . $lastBatteryReplacementYear;
+                    }
+                    // Update battery list
+                    array_push($batteryList, [
+                        'ActualStatus'              => $actualStatus,
+                        'Unicode'                   => $unicode,
+                        'ID'                        => $id,
+                        'Name'                      => $name,
+                        'Comment'                   => $comment,
+                        'LastBatteryReplacement'    => $lastBatteryReplacement]);
+
+                    // Update critical state variables
+                    $criticalStateVariables = json_decode($this->ReadAttributeString('CriticalStateVariables'), true);
+                    if ($this->ReadPropertyBoolean('ImmediateNotification')) {
+                        // Check if variable already exists
+                        $key = array_search($id, array_column($criticalStateVariables['immediateNotification'], 'id'));
+                        // Variable already exists, update actual status and timestamp
+                        if (is_int($key)) {
+                            $criticalStateVariables['immediateNotification'][$key]['actualStatus'] = $actualStatus;
+                            $criticalStateVariables['immediateNotification'][$key]['timestamp'] = $timeStamp;
+                        }
+                        // Variable doesn't exist, add variable to list
+                        else {
+                            array_push($criticalStateVariables['immediateNotification'], ['actualStatus' => $actualStatus, 'id' => $id, 'name' => $name, 'comment' => $comment, 'timestamp' => $timeStamp]);
+                        }
+                    }
+                    if ($this->ReadPropertyBoolean('DailyNotification')) {
+                        // Check if variable already exists
+                        $key = array_search($id, array_column($criticalStateVariables['dailyNotification'], 'id'));
+                        // Variable already exists, update actual status and timestamp
+                        if (is_int($key)) {
+                            if ($actualStatus != 0) {
+                                $criticalStateVariables['dailyNotification'][$key]['actualStatus'] = $actualStatus;
+                                $criticalStateVariables['dailyNotification'][$key]['timestamp'] = $timeStamp;
+                            }
+                        }
+                        // Variable doesn't exist, add variable to list
+                        else {
+                            array_push($criticalStateVariables['dailyNotification'], ['actualStatus' => $actualStatus, 'id' => $id, 'name' => $name, 'comment' => $comment, 'timestamp' => $timeStamp]);
+                        }
+                    }
+                    if ($this->ReadPropertyBoolean('WeeklyNotification')) {
+                        // Check if variable already exists
+                        $key = array_search($id, array_column($criticalStateVariables['weeklyNotification'], 'id'));
+                        // Variable already exists, update actual status and timestamp
+                        if (is_int($key)) {
+                            if ($actualStatus != 0) {
+                                $criticalStateVariables['weeklyNotification'][$key]['actualStatus'] = $actualStatus;
+                                $criticalStateVariables['weeklyNotification'][$key]['timestamp'] = $timeStamp;
+                            }
+                        }
+                        // Variable doesn't exist, add variable to list
+                        else {
+                            array_push($criticalStateVariables['weeklyNotification'], ['actualStatus' => $actualStatus, 'id' => $id, 'name' => $name, 'comment' => $comment, 'timestamp' => $timeStamp]);
+                        }
+                    }
+                    $this->WriteAttributeString('CriticalStateVariables', json_encode($criticalStateVariables));
+                }
+            }
+            // Battery List for WebFront
+            $string = '';
+            if ($this->ReadPropertyBoolean('EnableBatteryList')) {
+                $string = "<table style='width: 100%; border-collapse: collapse;'>";
+                $string .= '<tr><td><b>Status</b></td><td><b>ID</b></td><td><b>Name</b></td><td><b>Adresse</b></td><td><b>Letzter Batteriewechsel</b></td></tr>';
+                // Sort variables by name
+                usort($batteryList, function ($a, $b)
+                {
+                    return $a['Name'] <=> $b['Name'];
+                });
+                // Rebase array
+                $batteryList = array_values($batteryList);
+                if (!empty($batteryList)) {
+                    // Show update overdue first
+                    foreach ($batteryList as $battery) {
+                        $id = $battery['ID'];
+                        if ($id != 0 && IPS_ObjectExists($id)) {
+                            if ($battery['ActualStatus'] == 2) {
+                                $string .= '<tr><td>' . $battery['Unicode'] . '</td><td>' . $id . '</td><td>' . $battery['Name'] . '</td><td>' . $battery['Comment'] . '</td><td>' . $battery['LastBatteryReplacement'] . '</td></tr>';
+                            }
+                        }
+                    }
+                    // Low battery is next
+                    foreach ($batteryList as $battery) {
+                        $id = $battery['ID'];
+                        if ($id != 0 && IPS_ObjectExists($id)) {
+                            if ($battery['ActualStatus'] == 1) {
+                                $string .= '<tr><td>' . $battery['Unicode'] . '</td><td>' . $id . '</td><td>' . $battery['Name'] . '</td><td>' . $battery['Comment'] . '</td><td>' . $battery['LastBatteryReplacement'] . '</td></tr>';
+                            }
+                        }
+                    }
+                    // Normal status is last
+                    foreach ($batteryList as $battery) {
+                        $id = $battery['ID'];
+                        if ($id != 0 && IPS_ObjectExists($id)) {
+                            if ($battery['ActualStatus'] == 0) {
+                                $string .= '<tr><td>' . $battery['Unicode'] . '</td><td>' . $id . '</td><td>' . $battery['Name'] . '</td><td>' . $battery['Comment'] . '</td><td>' . $battery['LastBatteryReplacement'] . '</td></tr>';
+                            }
+                        }
+                    }
+                }
+                $string .= '</table>';
+            }
+            $this->SetValue('BatteryList', $string);
+            // Set status
+            $lastOverallStatus = $this->GetValue('Status');
+            $this->SetValue('Status', $actualOverallStatus);
+            if ($this->GetValue('Monitoring')) {
+                if ($actualOverallStatus != $lastOverallStatus) {
+                    if ($Mode == 0) {
+                        $this->TriggerImmediateNotification();
+                    }
+                    // Notification script
+                    $id = $this->ReadPropertyInteger('NotificationScript');
+                    if ($id != 0 && IPS_ObjectExists($id)) {
+                        IPS_RunScriptEx($id, ['MonitoringStatus' => $actualOverallStatus]);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Determines the Homematic variables automatically.
+     */
+    public function DetermineHomematicVariables(): void
+    {
+        $this->SendDebug(__FUNCTION__, 'Die Methode wird ausgeführt. (' . microtime(true) . ')', 0);
+        $monitoredVariables = [];
+        $instances = @IPS_GetInstanceListByModuleID(self::HOMEMATIC_DEVICE_GUID);
+        if (!empty($instances)) {
             $variables = [];
-            foreach ($instanceIDs as $instanceID) {
-                $childrenIDs = @IPS_GetChildrenIDs($instanceID);
-                foreach ($childrenIDs as $childrenID) {
+            foreach ($instances as $instance) {
+                $children = @IPS_GetChildrenIDs($instance);
+                foreach ($children as $child) {
                     $match = false;
-                    $object = @IPS_GetObject($childrenID);
+                    $object = @IPS_GetObject($child);
                     if ($object['ObjectIdent'] == 'LOWBAT' || $object['ObjectIdent'] == 'LOW_BAT') {
                         $match = true;
                     }
                     if ($match) {
                         // Check for variable
                         if ($object['ObjectType'] == 2) {
-                            $name = strstr(@IPS_GetName($instanceID), ':', true);
-                            if ($name == false) {
-                                $name = @IPS_GetName($instanceID);
-                            }
-                            $deviceAddress = @IPS_GetProperty(IPS_GetParent($childrenID), 'Address');
-                            array_push($variables, ['Use' => true, 'ID' => $childrenID, 'Name' => $name, 'Address' => $deviceAddress, 'AlertingValue' => 1, 'LastBatteryReplacementDate' => $date]);
+                            array_push($variables, ['ID' => $child]);
                         }
                     }
                 }
             }
             // Get already listed variables
-            $listedVariables = json_decode($this->ReadPropertyString('MonitoredVariables'), true);
+            $monitoredVariables = json_decode($this->ReadPropertyString('MonitoredVariables'), true);
             // Add new variables
-            if (!empty($listedVariables)) {
-                $addVariables = array_diff(array_column($variables, 'ID'), array_column($listedVariables, 'ID'));
-                if (!empty($addVariables)) {
-                    foreach ($addVariables as $addVariable) {
-                        $name = strstr(@IPS_GetName(@IPS_GetParent($addVariable)), ':', true);
-                        $deviceAddress = @IPS_GetProperty(@IPS_GetParent($addVariable), 'Address');
-                        array_push($listedVariables, ['Use' => true, 'ID' => $addVariable, 'Name' => $name, 'Address' => $deviceAddress, 'AlertingValue' => 1, 'LastBatteryReplacementDate' => $date]);
-                    }
+            $newVariables = array_diff(array_column($variables, 'ID'), array_column($monitoredVariables, 'ID'));
+            if (!empty($newVariables)) {
+                foreach ($newVariables as $variable) {
+                    $name = strstr(@IPS_GetName(@IPS_GetParent($variable)), ':', true);
+                    $address = @IPS_GetProperty(@IPS_GetParent($variable), 'Address');
+                    $lastBatteryReplacement = '{"year":0, "month":0, "day":0}';
+                    array_push($monitoredVariables, [
+                        'ID'                     => $variable,
+                        'Name'                   => $name,
+                        'Comment'                => $address,
+                        'CheckBattery'           => true,
+                        'AlertingValue'          => 1,
+                        'CheckUpdate'            => true,
+                        'UpdatePeriod'           => 3,
+                        'LastBatteryReplacement' => $lastBatteryReplacement]);
                 }
-            } else {
-                $listedVariables = $variables;
             }
         }
+        // Sort variables by name
+        usort($monitoredVariables, function ($a, $b)
+        {
+            return $a['Name'] <=> $b['Name'];
+        });
         // Rebase array
-        $listedVariables = array_values($listedVariables);
+        $monitoredVariables = array_values($monitoredVariables);
         // Update variable list
-        IPS_SetProperty($this->InstanceID, 'MonitoredVariables', json_encode($listedVariables));
+        IPS_SetProperty($this->InstanceID, 'MonitoredVariables', json_encode($monitoredVariables));
         if (IPS_HasChanges($this->InstanceID)) {
             IPS_ApplyChanges($this->InstanceID);
         }
-        echo 'Die Variablen wurden automatisch ermittelt!';
+        echo 'Die Homematic Variablen wurden automatisch ermittelt!';
     }
 
     /**
@@ -83,19 +271,20 @@ trait BAT_variables
                 switch ($variableType) {
                     case 1:
                         // Integer
-                        $profileName = 'BATT.Battery.Integer';
+                        $profileName = 'BAT.Battery.Integer';
                         break;
 
                     default:
                         // Boolean
-                        $profileName = 'BATT.Battery.Boolean';
+                        $profileName = 'BAT.Battery.Boolean';
                 }
                 // Always assign profile
                 if ($Override) {
                     if (!is_null($profileName)) {
                         @IPS_SetVariableCustomProfile($variable->ID, $profileName);
                     }
-                } // Only assign profile, if variable has no profile
+                }
+                // Only assign profile, if variable has no profile
                 else {
                     // Check if variable has a profile
                     $assignedProfile = @IPS_GetVariable($variable->ID)['VariableProfile'];
@@ -116,14 +305,13 @@ trait BAT_variables
     public function CreateVariableLinks(int $LinkCategory): void
     {
         $this->SendDebug(__FUNCTION__, 'Die Methode wird ausgeführt. (' . microtime(true) . ')', 0);
-        // Define icon first
         $icon = 'Battery';
         // Get all monitored variables
         $monitoredVariables = json_decode($this->ReadPropertyString('MonitoredVariables'));
         $targetIDs = [];
         $i = 0;
         foreach ($monitoredVariables as $variable) {
-            if ($variable->Use) {
+            if ($variable->CheckBattery || $variable->CheckUpdate) {
                 $targetIDs[$i] = ['name' => $variable->Name, 'targetID' => $variable->ID];
                 $i++;
             }
@@ -137,7 +325,7 @@ trait BAT_variables
             $i = 0;
             foreach ($links as $link) {
                 $linkInfo = @IPS_GetObject($link)['ObjectInfo'];
-                if ($linkInfo == 'BATT.' . $this->InstanceID) {
+                if ($linkInfo == 'BAT.' . $this->InstanceID) {
                     // Get target id
                     $existingTargetID = @IPS_GetLink($link)['TargetID'];
                     $existingTargetIDs[$i] = ['linkID' => $link, 'targetID' => $existingTargetID];
@@ -167,7 +355,7 @@ trait BAT_variables
                 $name = $targetIDs[$position]['name'];
                 @IPS_SetName($linkID, $name);
                 @IPS_SetLinkTargetID($linkID, $targetID);
-                @IPS_SetInfo($linkID, 'BATT.' . $this->InstanceID);
+                @IPS_SetInfo($linkID, 'BAT.' . $this->InstanceID);
                 @IPS_SetIcon($linkID, $icon);
             }
         }
@@ -182,7 +370,7 @@ trait BAT_variables
                 @IPS_SetPosition($linkID, $position + 3);
                 $name = $targetIDs[$position]['name'];
                 @IPS_SetName($linkID, $name);
-                @IPS_SetInfo($linkID, 'BATT.' . $this->InstanceID);
+                @IPS_SetInfo($linkID, 'BAT.' . $this->InstanceID);
                 @IPS_SetIcon($linkID, $icon);
             }
         }
@@ -190,74 +378,62 @@ trait BAT_variables
     }
 
     /**
-     * Updates the battery replacement date
+     * Updates the battery replacement date of the specified variable.
      *
-     * @param string $VariableID
+     * @param int $VariableID
      */
-    public function UpdateBatteryReplacementDate(string $VariableID): void
+    public function UpdateBatteryReplacement(int $VariableID): void
     {
         $this->SendDebug(__FUNCTION__, 'Die Methode wird ausgeführt (' . microtime(true) . ')', 0);
         $this->SendDebug(__FUNCTION__, 'Parameter $VariableID = ' . $VariableID, 0);
         $data = [];
-        $monitoredVariables = json_decode($this->ReadPropertyString('MonitoredVariables'));
-        if (empty($monitoredVariables)) {
+        if (!$this->CheckForExistingVariables()) {
             $this->SendDebug(__FUNCTION__, 'Abbruch, Es werden keine Variablen überwacht!', 0);
             return;
         }
+        if ($VariableID == 0 || !IPS_ObjectExists($VariableID)) {
+            $this->SendDebug(__FUNCTION__, 'Abbruch, Die Variable mit der ID ' . $VariableID . 'existiert nicht!', 0);
+            return;
+        }
+        $monitoredVariables = json_decode($this->ReadPropertyString('MonitoredVariables'));
         foreach ($monitoredVariables as $index => $variable) {
             $id = $variable->ID;
             if ($id == 0 || !IPS_ObjectExists($id)) {
                 continue;
             }
-            $data[$index]['Use'] = $variable->Use;
             $data[$index]['ID'] = $id;
             $data[$index]['Name'] = $variable->Name;
-            $data[$index]['Address'] = $variable->Address;
+            $data[$index]['Comment'] = $variable->Comment;
+            $data[$index]['CheckBattery'] = $variable->CheckBattery;
             $data[$index]['AlertingValue'] = $variable->AlertingValue;
+            $data[$index]['CheckUpdate'] = $variable->CheckUpdate;
+            $data[$index]['UpdatePeriod'] = $variable->UpdatePeriod;
             if ($id == $VariableID) {
                 $year = date('Y');
                 $month = date('n');
                 $day = date('j');
-                $data[$index]['LastBatteryReplacementDate'] = '{"year":' . $year . ',"month":' . $month . ',"day":' . $day . '}';
+                $data[$index]['LastBatteryReplacement'] = '{"year":' . $year . ',"month":' . $month . ',"day":' . $day . '}';
             } else {
-                $data[$index]['LastBatteryReplacementDate'] = $variable->LastBatteryReplacementDate;
+                $data[$index]['LastBatteryReplacement'] = $variable->LastBatteryReplacement;
             }
         }
-        $this->SendDebug(__FUNCTION__, 'Data: ' . json_encode($data), 0);
-        // Delete variable in existing attributes
-        // Immediate attribute
-        $lowBatteryVariables = json_decode($this->ReadAttributeString('ImmediateNotificationLowBatteryVariables'), true);
-        if (!empty($lowBatteryVariables)) {
-            foreach ($lowBatteryVariables as $key => $variable) {
-                if ($variable['id'] == $VariableID) {
-                    unset($lowBatteryVariables[$key]);
-                }
-            }
-            $lowBatteryVariables = array_values($lowBatteryVariables);
-            $this->WriteAttributeString('ImmediateNotificationLowBatteryVariables', json_encode($lowBatteryVariables));
+        $timeStamp = date('d.m.Y, H:i:s');
+        $criticalStateVariables = json_decode($this->ReadAttributeString('CriticalStateVariables'), true);
+        // Check if variable already exists in daily notification
+        $key = array_search($VariableID, array_column($criticalStateVariables['dailyNotification'], 'id'));
+        // Variable already exists, update actual status and timestamp
+        if (is_int($key)) {
+            $criticalStateVariables['dailyNotification'][$key]['actualStatus'] = 0; // Battery OK
+            $criticalStateVariables['dailyNotification'][$key]['timestamp'] = $timeStamp;
         }
-        // Daily attribute
-        $lowBatteryVariables = json_decode($this->ReadAttributeString('DailyReportLowBatteryVariables'), true);
-        if (!empty($lowBatteryVariables)) {
-            foreach ($lowBatteryVariables as $key => $variable) {
-                if ($variable['id'] == $VariableID) {
-                    unset($lowBatteryVariables[$key]);
-                }
-            }
-            $lowBatteryVariables = array_values($lowBatteryVariables);
-            $this->WriteAttributeString('DailyReportLowBatteryVariables', json_encode($lowBatteryVariables));
+        // Check if variable already exists in weekly notification
+        $key = array_search($VariableID, array_column($criticalStateVariables['weeklyNotification'], 'id'));
+        // Variable already exists, update actual status and timestamp
+        if (is_int($key)) {
+            $criticalStateVariables['weeklyNotification'][$key]['actualStatus'] = 0; // Battery OK
+            $criticalStateVariables['weeklyNotification'][$key]['timestamp'] = $timeStamp;
         }
-        // Weekly attribute
-        $lowBatteryVariables = json_decode($this->ReadAttributeString('WeeklyReportLowBatteryVariables'), true);
-        if (!empty($lowBatteryVariables)) {
-            foreach ($lowBatteryVariables as $key => $variable) {
-                if ($variable['id'] == $VariableID) {
-                    unset($lowBatteryVariables[$key]);
-                }
-            }
-            $lowBatteryVariables = array_values($lowBatteryVariables);
-            $this->WriteAttributeString('WeeklyReportLowBatteryVariables', json_encode($lowBatteryVariables));
-        }
+        $this->WriteAttributeString('CriticalStateVariables', json_encode($criticalStateVariables));
         IPS_SetProperty($this->InstanceID, 'MonitoredVariables', json_encode($data));
         if (IPS_HasChanges($this->InstanceID)) {
             IPS_ApplyChanges($this->InstanceID);
@@ -267,135 +443,27 @@ trait BAT_variables
     //#################### Private
 
     /**
-     * Updates the battery list.
+     * Checks for existing variables for monitoring.
+     *
+     * @return bool
+     * false    = no monitored variable exists
+     * true     = monitored variables exist
      */
-    private function UpdateBatteryList(): void
-    {
-        $string = '';
-        $this->SendDebug(__FUNCTION__, 'Die Methode wird ausgeführt. (' . microtime(true) . ')', 0);
-        if ($this->ReadPropertyBoolean('EnableBatteryList')) {
-            $string = "<table style='width: 100%; border-collapse: collapse;'>";
-            $string .= '<tr><td><b>ID</b></td><td><b>Name</b></td><td><b>Batteriestatus</b></td><td><b>Adresse</b></td><td><b>Letzter Batteriewechsel</b></td></tr>';
-            $monitoredVariables = json_decode($this->ReadPropertyString('MonitoredVariables'), true);
-            if (!empty($monitoredVariables)) {
-                // Sort variables by name
-                usort($monitoredVariables, function ($a, $b)
-                {
-                    return $a['Name'] <=> $b['Name'];
-                });
-                // Rebase array
-                $monitoredVariables = array_values($monitoredVariables);
-                // Low battery on top
-                foreach ($monitoredVariables as $variable) {
-                    if ($variable['Use']) {
-                        $id = $variable['ID'];
-                        if (@IPS_ObjectExists($id)) {
-                            $actualValue = boolval(GetValue($id));
-                            $alertingValue = boolval($variable['AlertingValue']);
-                            if ($actualValue == $alertingValue) {
-                                // Address
-                                $address = $variable['Address'];
-                                if (empty($address)) {
-                                    $address = '-';
-                                }
-                                // Last battery replacement date
-                                $date = json_decode($variable['LastBatteryReplacementDate']);
-                                $year = $date->year;
-                                $month = $date->month;
-                                $day = $date->day;
-                                if ($year == 0 && $month == 0 && $day == 0) {
-                                    $lastBatteryReplacementDate = '-';
-                                } else {
-                                    $lastBatteryReplacementDate = $day . '.' . $month . '.' . $year;
-                                }
-                                // Set color to red
-                                $string .= '<tr><td><span style="color:#FF0000"><b>' . $id . '</b></span></td><td><span style="color:#FF0000"><b>' . $variable['Name'] . '</b></span></td><td><span style="color:#FF0000"><b>Batterie schwach!</b></span></td><td><b><span style="color:#FF0000"><b>' . $address . '</b></td><td><span style="color:#FF0000"><b>' . $lastBatteryReplacementDate . '</b></span></td></tr>';
-                            }
-                        }
-                    }
-                }
-                // Battery OK
-                foreach ($monitoredVariables as $variable) {
-                    if ($variable['Use']) {
-                        $id = $variable['ID'];
-                        if (@IPS_ObjectExists($id)) {
-                            $actualValue = boolval(GetValue($id));
-                            $alertingValue = boolval($variable['AlertingValue']);
-                            if ($actualValue != $alertingValue) {
-                                // Address
-                                $address = $variable['Address'];
-                                if (empty($address)) {
-                                    $address = '-';
-                                }
-                                // Last battery replacement date
-                                $date = json_decode($variable['LastBatteryReplacementDate']);
-                                $year = $date->year;
-                                $month = $date->month;
-                                $day = $date->day;
-                                if ($year == 0 && $month == 0 && $day == 0) {
-                                    $lastBatteryReplacementDate = '-';
-                                } else {
-                                    $lastBatteryReplacementDate = $day . '.' . $month . '.' . $year;
-                                }
-                                $string .= '<tr><td>' . $id . '</td><td>' . $variable['Name'] . '</td><td>OK</td><td>' . $address . '</td><td>' . $lastBatteryReplacementDate . '</td></tr>';
-                            }
-                        }
-                    }
-                }
-                $string .= '</table>';
-            }
-        }
-        $this->SetValue('BatteryList', $string);
-    }
-
-    /**
-     * Checks the actual status.
-     */
-    private function CheckActualStatus(): void
+    private function CheckForExistingVariables(): bool
     {
         $this->SendDebug(__FUNCTION__, 'Die Methode wird ausgeführt. (' . microtime(true) . ')', 0);
-        $state = false;
-        $actualState = $this->GetValue('Status');
-        $monitoredVariables = json_decode($this->ReadPropertyString('MonitoredVariables'));
+        $result = false;
+        $monitoredVariables = json_decode($this->ReadPropertyString('MonitoredVariables'), true);
         if (!empty($monitoredVariables)) {
             foreach ($monitoredVariables as $variable) {
-                $id = $variable->ID;
-                if (IPS_ObjectExists($id) && $variable->Use) {
-                    $actualValue = boolval(GetValue($id));
-                    $alertingValue = boolval($variable->AlertingValue);
-                    if ($actualValue == $alertingValue) {
-                        $state = true;
+                $id = $variable['ID'];
+                if ($id != 0 && IPS_ObjectExists($id)) {
+                    if ($variable['CheckBattery'] || $variable['CheckUpdate']) {
+                        return true;
                     }
                 }
             }
         }
-        $this->SetValue('Status', $state);
-        // Execute script if the status has changed
-        if ($state != $actualState) {
-            $id = $this->ReadPropertyInteger('NotificationScript');
-            if ($id != 0 && IPS_ObjectExists($id)) {
-                IPS_RunScriptEx($id, ['MonitoringStatus' => $actualState]);
-            }
-        }
-    }
-
-    /**
-     * Executes the alerting.
-     *
-     * @param int $SenderID
-     * @param bool $ActualValue
-     */
-    private function TriggerAlerting(int $SenderID, bool $ActualValue): void
-    {
-        $this->SendDebug(__FUNCTION__, 'Die Methode wird ausgeführt. (' . microtime(true) . ')', 0);
-        $this->SendDebug(__FUNCTION__, 'Parameter $SenderID = ' . $SenderID, 0);
-        $this->SendDebug(__FUNCTION__, 'Parameter $ActualValue = ' . json_encode($ActualValue), 0);
-        // Variables must exist
-        $monitoredVariables = json_decode($this->ReadPropertyString('MonitoredVariables'), true);
-        if (empty($monitoredVariables)) {
-            $this->SendDebug(__FUNCTION__, 'Abbruch, Es werden keine Variablen überwacht!', 0);
-            return;
-        }
-        $this->TriggerImmediateNotification($SenderID, $ActualValue);
+        return $result;
     }
 }

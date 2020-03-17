@@ -26,11 +26,11 @@
         },
         {
           "type": "Label",
-          "caption": "Version:\t\t\t4.00-18"
+          "caption": "Version:\t\t\t4.01-19"
         },
         {
           "type": "Label",
-          "caption": "Datum:\t\t\t10. März 2020"
+          "caption": "Datum:\t\t\t17. März 2020"
         },
         {
           "type": "Label",
@@ -43,6 +43,10 @@
         {
           "type": "Label",
           "caption": "Präfix:\t\t\tBAT"
+        },
+        {
+          "type": "Label",
+          "caption": "Symbole:\t\t\u2757\tÜberfällige Aktualisierung\n\t\t\t\t\u26a0\ufe0f\tSchwache Batterie\n\t\t\t\t\u2705\tOK"
         }
       ]
     },
@@ -84,7 +88,7 @@
           "type": "List",
           "name": "MonitoredVariables",
           "caption": "Überwachte Variablen",
-          "rowCount": 25,
+          "rowCount": 20,
           "add": true,
           "delete": true,
           "sort": {
@@ -93,13 +97,10 @@
           },
           "columns": [
             {
-              "caption": "Aktiviert",
-              "name": "Use",
-              "width": "100px",
-              "add": true,
-              "edit": {
-                "type": "CheckBox"
-              }
+              "name": "ActualStatus",
+              "caption": "Aktueller Status",
+              "width": "150px",
+              "add": ""
             },
             {
               "name": "ID",
@@ -120,8 +121,8 @@
               }
             },
             {
-              "name": "Address",
-              "caption": "Addresse",
+              "name": "Comment",
+              "caption": "Bemerkung",
               "width": "250px",
               "add": "",
               "edit": {
@@ -129,9 +130,24 @@
               }
             },
             {
-              "caption": "Auslösender Wert",
-              "name": "AlertingValue",
+              "name": "CheckBattery",
+              "caption": "Batterieprüfung",
               "width": "150px",
+              "add": true,
+              "edit": {
+                "type": "CheckBox"
+              }
+            },
+            {
+              "name": "ActualValue",
+              "caption": "Aktueller Wert",
+              "width": "140px",
+              "add": 0
+            },
+            {
+              "name": "AlertingValue",
+              "caption": "Auslösender Wert",
+              "width": "160px",
               "add": 1,
               "edit": {
                 "type": "Select",
@@ -148,15 +164,40 @@
               }
             },
             {
+              "name": "CheckUpdate",
+              "caption": "Aktualisierungsprüfung",
+              "width": "200px",
+              "add": true,
+              "edit": {
+                "type": "CheckBox"
+              }
+            },
+            {
+              "name": "UpdatePeriod",
+              "caption": "Zeitraum",
+              "width": "100px",
+              "add": 3,
+              "edit": {
+                "type": "NumberSpinner",
+                "suffix": " Tage"
+              }
+            },
+            {
+              "name": "LastUpdate",
+              "caption": "Letzte Aktualisierung",
+              "width": "180px",
+              "add": 0
+            },
+            {
               "name": "BatteryReplacement",
               "caption": "",
               "width": "30px",
-              "onClick": "BAT_UpdateBatteryReplacementDate($id, $MonitoredVariables['ID']);",
+              "onClick": "BAT_UpdateBatteryReplacement($id, $MonitoredVariables['ID']);",
               "add": "\uD83D\uDD0B️"
             },
             {
+              "name": "LastBatteryReplacement",
               "caption": "Letzter Batteriewechsel",
-              "name": "LastBatteryReplacementDate",
               "width": "200px",
               "add": "{\"year\":0,\"month\":0,\"day\":0}",
               "edit": {
@@ -164,16 +205,12 @@
               }
             }
           ]
-        },
-        {
-          "type": "Label",
-          "caption": "gelb\t= Batterie schwach\nrot\t\t= Fehler"
         }
       ]
     },
     {
       "type": "ExpansionPanel",
-      "caption": "Benachrichtigung",
+      "caption": "Benachrichtigungen",
       "items": [
         {
           "type": "ValidationTextBox",
@@ -204,21 +241,21 @@
               "type": "CheckBox",
               "name": "ImmediateNotification",
               "caption": "Sofortige Benachrichtigung verwenden"
-            },
-            {
-              "type": "Label",
-              "caption": " "
-            },
-            {
-              "type": "CheckBox",
-              "name": "ImmediateNotificationOnlyWeakBattery",
-              "caption": "Nur Batterie schwach"
             }
           ]
         },
         {
           "type": "RowLayout",
           "items": [
+            {
+              "type": "CheckBox",
+              "name": "ImmediateNotificationOnlyOnAlarm",
+              "caption": "Nur bei Alarm"
+            },
+            {
+              "type": "Label",
+              "caption": " "
+            },
             {
               "type": "CheckBox",
               "name": "ImmediateNotificationMaximumOncePerDay",
@@ -269,24 +306,24 @@
         },
         {
           "type": "Label",
-          "caption": "Tagesbericht"
+          "caption": "Tägliche Benachrichtigung"
         },
         {
           "type": "RowLayout",
           "items": [
             {
               "type": "CheckBox",
-              "name": "DailyReport",
-              "caption": "Tagesbericht verwenden"
+              "name": "DailyNotification",
+              "caption": "Tägliche Benachrichtigung verwenden"
             },
             {
               "type": "Label",
               "caption": " "
             },
             {
-              "type": "CheckBox",
-              "name": "DailyReportOnlyWeakBattery",
-              "caption": "Nur Batterie schwach"
+              "type": "SelectTime",
+              "name": "DailyNotificationTime",
+              "caption": "Uhrzeit"
             }
           ]
         },
@@ -295,7 +332,17 @@
           "items": [
             {
               "type": "CheckBox",
-              "name": "DailyReportUsePushNotification",
+              "name": "DailyNotificationOnlyOnAlarm",
+              "caption": "Nur bei Alarm"
+            }
+          ]
+        },
+        {
+          "type": "RowLayout",
+          "items": [
+            {
+              "type": "CheckBox",
+              "name": "DailyNotificationUsePushNotification",
               "caption": "Push"
             },
             {
@@ -304,7 +351,7 @@
             },
             {
               "type": "CheckBox",
-              "name": "DailyReportUseEmailNotification",
+              "name": "DailyNotificationUseEmailNotification",
               "caption": "E-Mail"
             },
             {
@@ -313,15 +360,10 @@
             },
             {
               "type": "CheckBox",
-              "name": "DailyReportUseSMSNotification",
+              "name": "DailyNotificationUseSMSNotification",
               "caption": "SMS"
             }
           ]
-        },
-        {
-          "type": "SelectTime",
-          "name": "DailyReportTime",
-          "caption": "Uhrzeit"
         },
         {
           "type": "Label",
@@ -329,57 +371,22 @@
         },
         {
           "type": "Label",
-          "caption": "Wochenbericht"
+          "caption": "Wöchentliche Benachrichtigung"
         },
         {
           "type": "RowLayout",
           "items": [
             {
               "type": "CheckBox",
-              "name": "WeeklyReport",
-              "caption": "Wochenbericht verwenden"
-            },
-            {
-              "type": "CheckBox",
-              "name": "WeeklyReportOnlyWeakBattery",
-              "caption": "Nur Batterie schwach"
-            }
-          ]
-        },
-        {
-          "type": "RowLayout",
-          "items": [
-            {
-              "type": "CheckBox",
-              "name": "WeeklyReportUsePushNotification",
-              "caption": "Push"
+              "name": "WeeklyNotification",
+              "caption": "Wöchentliche Benachrichtigung verwenden"
             },
             {
               "type": "Label",
               "caption": " "
-            },
-            {
-              "type": "CheckBox",
-              "name": "WeeklyReportUseEmailNotification",
-              "caption": "E-Mail"
-            },
-            {
-              "type": "Label",
-              "caption": " "
-            },
-            {
-              "type": "CheckBox",
-              "name": "WeeklyReportUseSMSNotification",
-              "caption": "SMS"
-            }
-          ]
-        },
-        {
-          "type": "RowLayout",
-          "items": [
-            {
+            },{
               "type": "Select",
-              "name": "WeeklyReportDay",
+              "name": "WeeklyNotificationDay",
               "caption": "Wochentag",
               "options": [
                 {
@@ -418,8 +425,46 @@
             },
             {
               "type": "SelectTime",
-              "name": "WeeklyReportTime",
+              "name": "WeeklyNotificationTime",
               "caption": "Uhrzeit"
+            }
+          ]
+        },
+        {
+          "type": "RowLayout",
+          "items": [
+            {
+              "type": "CheckBox",
+              "name": "WeeklyNotificationOnlyOnAlarm",
+              "caption": "Nur bei Alarm"
+            }
+          ]
+        },
+        {
+          "type": "RowLayout",
+          "items": [
+            {
+              "type": "CheckBox",
+              "name": "WeeklyNotificationUsePushNotification",
+              "caption": "Push"
+            },
+            {
+              "type": "Label",
+              "caption": " "
+            },
+            {
+              "type": "CheckBox",
+              "name": "WeeklyNotificationUseEmailNotification",
+              "caption": "E-Mail"
+            },
+            {
+              "type": "Label",
+              "caption": " "
+            },
+            {
+              "type": "CheckBox",
+              "name": "WeeklyNotificationUseSMSNotification",
+              "caption": "SMS"
             }
           ]
         },
@@ -428,9 +473,13 @@
           "caption": " "
         },
         {
+          "type": "Label",
+          "caption": "Skriptausführung bei Statusänderung"
+        },
+        {
           "type": "SelectScript",
           "name": "NotificationScript",
-          "caption": "Skript (Ausführung bei Statusänderung)"
+          "caption": "Skript"
         },
         {
           "type": "Label",
@@ -508,34 +557,34 @@
           "caption": "Registrierte Nachrichten",
           "rowCount": 10,
           "sort": {
-            "column": "ParentName",
+            "column": "Description",
             "direction": "ascending"
           },
           "columns": [
             {
+              "name": "Description",
               "caption": "Bezeichnung",
-              "name": "ParentName",
               "width": "350px"
             },
             {
-              "caption": "Sender ID",
               "name": "SenderID",
-              "width": "150px"
+              "caption": "Sender ID",
+              "width": "110px"
             },
             {
-              "caption": "Sender Name",
               "name": "SenderName",
+              "caption": "Sender Name",
               "width": "250px"
             },
             {
-              "caption": "Nachrichten ID",
               "name": "MessageID",
-              "width": "150px"
+              "caption": "Nachrichten ID",
+              "width": "140px"
             },
             {
-              "caption": "Nachrichten Bezeichnung",
               "name": "MessageDescription",
-              "width": "250px"
+              "caption": "Nachrichten Bezeichnung",
+              "width": "220px"
             }
           ]
         }
@@ -553,15 +602,15 @@
             "items": [
               {
                 "type": "Button",
-                "caption": "Variablen ermitteln",
-                "onClick": "BAT_DetermineVariables($id);"
+                "caption": "Homematic Variablen ermitteln",
+                "onClick": "BAT_DetermineHomematicVariables($id);"
               }
             ]
           }
         },
         {
           "type": "PopupButton",
-          "caption": "Profile zuweisen",
+          "caption": "Variablenprofile zuweisen",
           "popup": {
             "caption": "Variablenprofile wirklich zuweisen?",
             "items": [
@@ -608,9 +657,26 @@
       "caption": "Sofortige Benachrichtigung",
       "items": [
         {
-          "type": "Button",
-          "caption": "Gesperrte Variablen anzeigen",
-          "onClick": "BAT_ShowLockedVariables($id);"
+          "type": "List",
+          "name": "Blacklist",
+          "caption": "Sperrliste",
+          "rowCount": 2,
+          "columns": [
+            {
+              "name": "Status",
+              "caption": "Status",
+              "width": "80px"
+            },
+            {
+              "name": "Notification",
+              "caption": "Benachrichtigung",
+              "width": "160px"
+            }
+          ]
+        },
+        {
+          "type": "Label",
+          "caption": " "
         },
         {
           "type": "PopupButton",
@@ -621,7 +687,7 @@
               {
                 "type": "Button",
                 "caption": "Sperrliste zurücksetzten",
-                "onClick": "BAT_ResetBlacklist($id); echo 'Die Sperrliste wurde zurückgesetzt!';"
+                "onClick": "BAT_ResetBlacklist($id); echo 'Die Sperrliste wurde zurückgesetzt!'; BAT_ReloadConfiguration($id);"
               }
             ]
           }
@@ -630,37 +696,73 @@
     },
     {
       "type": "ExpansionPanel",
-      "caption": "Tagesbericht",
+      "caption": "Tägliche Benachrichtigung",
       "items": [
         {
+          "type": "List",
+          "name": "DailyCriticalStateVariables",
+          "caption": "Kritische Variablen",
+          "rowCount": 5,
+          "sort": {
+            "column": "ActualStatus",
+            "direction": "ascending"
+          },
+          "columns": [
+            {
+              "name": "ActualStatus",
+              "caption": "Aktueller Status",
+              "width": "150px"
+            },
+            {
+              "name": "ID",
+              "caption": "Variable ID",
+              "width": "110px"
+            },
+            {
+              "name": "Name",
+              "caption": "Name",
+              "width": "350px"
+            },
+            {
+              "name": "Comment",
+              "caption": "Bemerkung",
+              "width": "250px"
+            },
+            {
+              "name": "Timestamp",
+              "caption": "Datum, Uhrzeit",
+              "width": "160px"
+            }
+          ]
+        },
+        {
+          "type": "Label",
+          "caption": " "
+        },
+        {
           "type": "PopupButton",
-          "caption": "Versenden",
+          "caption": "Kritische Variablen zurücksetzen",
           "popup": {
-            "caption": "Tagesbericht wirklich versenden?",
+            "caption": "Kritische Variablen wirklich zurücksetzen?",
             "items": [
               {
                 "type": "Button",
-                "caption": "Tagesbericht versenden",
-                "onClick": "BAT_TriggerDailyReport($id, false); echo 'Der Tagesbericht wurde versendet!';"
+                "caption": "Kritische Variablen zurücksetzen",
+                "onClick": "BAT_ResetCriticalVariablesForDailyNotification($id); echo 'Die kritischen Variablen wurden zurückgesetzt!'; BAT_ReloadConfiguration($id);"
               }
             ]
           }
         },
         {
-          "type": "Button",
-          "caption": "Schwache Batterien anzeigen",
-          "onClick": "$data = BAT_GetDailyAttribute($id); print_r($data);"
-        },
-        {
           "type": "PopupButton",
-          "caption": "Zurücksetzen",
+          "caption": "Versenden",
           "popup": {
-            "caption": "Tagesbericht wirklich zurücksetzen?",
+            "caption": "Tägliche Benachrichtigung wirklich versenden?",
             "items": [
               {
                 "type": "Button",
-                "caption": "Tagesbericht zurücksetzen",
-                "onClick": "BAT_ResetDailyReportAttribute($id); echo 'Der Tagesbericht wurde zurückgesetzt!';"
+                "caption": "Tägliche Benachrichtigung versenden",
+                "onClick": "BAT_TriggerDailyNotification($id, false); echo 'Die tägliche Benachrichtigung wurde versendet!';"
               }
             ]
           }
@@ -669,37 +771,73 @@
     },
     {
       "type": "ExpansionPanel",
-      "caption": "Wochenbericht",
+      "caption": "Wöchentliche Benachrichtigung",
       "items": [
         {
+          "type": "List",
+          "name": "WeeklyCriticalStateVariables",
+          "caption": "Kritische Variablen",
+          "rowCount": 5,
+          "sort": {
+            "column": "ActualStatus",
+            "direction": "ascending"
+          },
+          "columns": [
+            {
+              "name": "ActualStatus",
+              "caption": "Aktueller Status",
+              "width": "150px"
+            },
+            {
+              "name": "ID",
+              "caption": "Variable ID",
+              "width": "110px"
+            },
+            {
+              "name": "Name",
+              "caption": "Name",
+              "width": "350px"
+            },
+            {
+              "name": "Comment",
+              "caption": "Bemerkung",
+              "width": "250px"
+            },
+            {
+              "name": "Timestamp",
+              "caption": "Datum, Uhrzeit",
+              "width": "160px"
+            }
+          ]
+        },
+        {
+          "type": "Label",
+          "caption": " "
+        },
+        {
           "type": "PopupButton",
-          "caption": "Versenden",
+          "caption": "Kritische Variablen zurücksetzen",
           "popup": {
-            "caption": "Wochenbericht wirklich versenden?",
+            "caption": "Kritische Variablen wirklich zurücksetzen?",
             "items": [
               {
                 "type": "Button",
-                "caption": "Wochenbericht versenden",
-                "onClick": "BAT_TriggerWeeklyReport($id, false, false); echo 'Der Wochenbericht wurde versendet!';"
+                "caption": "Kritische Variablen zurücksetzen",
+                "onClick": "BAT_ResetCriticalVariablesForWeeklyNotification($id); echo 'Die kritische Variablen wurden zurückgesetzt!'; BAT_ReloadConfiguration($id);"
               }
             ]
           }
         },
         {
-          "type": "Button",
-          "caption": "Schwache Batterien anzeigen",
-          "onClick": "$data = BAT_GetWeeklyAttribute($id); print_r($data);"
-        },
-        {
           "type": "PopupButton",
-          "caption": "Zurücksetzen",
+          "caption": "Versenden",
           "popup": {
-            "caption": "Wochenbericht wirklich zurücksetzen?",
+            "caption": "Wöchentliche Benachrichtigung wirklich versenden?",
             "items": [
               {
                 "type": "Button",
-                "caption": "Wochenbericht zurücksetzen",
-                "onClick": "BAT_ResetWeeklyReportAttribute($id); echo 'Der Wochenbericht wurde zurückgesetzt!';"
+                "caption": "Wöchentliche Benachrichtigung versenden",
+                "onClick": "BAT_TriggerWeeklyNotification($id, false, false); echo 'Die wöchentliche Benachrichtigung wurde versendet!';"
               }
             ]
           }
