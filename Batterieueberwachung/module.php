@@ -106,7 +106,6 @@ class Batterieueberwachung extends IPSModule
         $this->ResetBlacklist();
 
         // Check status
-        $this->SetValue('Status', false);
         $this->CheckMonitoredVariables(0);
     }
 
