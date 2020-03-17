@@ -19,7 +19,15 @@ trait BAT_variables
         $actualOverallStatus = false;
         // Check for existing variables
         if (!$this->CheckForExistingVariables()) {
+            // Reset value
             $this->SetValue('Status', $actualOverallStatus);
+            // Clear battery list
+            $string = "<table style='width: 100%; border-collapse: collapse;'>";
+            $string .= '<tr><td><b>Status</b></td><td><b>ID</b></td><td><b>Name</b></td><td><b>Adresse</b></td><td><b>Letzter Batteriewechsel</b></td></tr>';
+            $string .= '</table>';
+            $this->SetValue('BatteryList', $string);
+            // Reset critical variables
+            $this->WriteAttributeString('CriticalStateVariables', '{"immediateNotification":[],"dailyNotification":[],"weeklyNotification":[]}');
             $this->SendDebug(__FUNCTION__, 'Abbruch, es werden keine Variablen überwacht!', 0);
             return;
         }
