@@ -475,6 +475,14 @@ trait BAT_variables
         }
         $monitoredVariables = json_decode($this->ReadPropertyString('MonitoredVariables'), true);
         $criticalStateVariables = json_decode($this->ReadAttributeString('CriticalStateVariables'), true);
+        // Check immediate notification
+        $deletedImmediateNotificationVariables = array_diff(array_column($criticalStateVariables['immediateNotification'], 'id'), array_column($monitoredVariables, 'ID'));
+        if (!empty($deletedImmediateNotificationVariables)) {
+            foreach ($deletedImmediateNotificationVariables as $key => $variable) {
+                unset($criticalStateVariables['immediateNotification'][$key]);
+            }
+        }
+        $criticalStateVariables['dailyNotification'] = array_values($criticalStateVariables['dailyNotification']);
         // Check daily notification
         $deletedDailyNotificationVariables = array_diff(array_column($criticalStateVariables['dailyNotification'], 'id'), array_column($monitoredVariables, 'ID'));
         if (!empty($deletedDailyNotificationVariables)) {
