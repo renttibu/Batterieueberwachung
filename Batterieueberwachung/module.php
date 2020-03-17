@@ -12,7 +12,7 @@
  * @license    	CC BY-NC-SA 4.0
  *              https://creativecommons.org/licenses/by-nc-sa/4.0/
  *
- * @version     4.01-21
+ * @version     4.01-22
  * @date        2020-03-17, 18:00, 1584464400
  * @review      2020-03-17, 18:00
  *
@@ -107,6 +107,9 @@ class Batterieueberwachung extends IPSModule
 
         // Check status
         $this->CheckMonitoredVariables(0);
+
+        // Clean up critical state variables
+        $this->CleanUpCriticalStateVariables();
     }
 
     public function MessageSink($TimeStamp, $SenderID, $Message, $Data): void

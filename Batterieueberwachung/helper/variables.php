@@ -22,13 +22,10 @@ trait BAT_variables
             // Reset value
             $this->SetValue('Status', $actualOverallStatus);
             // Clear battery list
-            $string = "<table style='width: 100%; border-collapse: collapse;'>";
-            $string .= '<tr><td><b>Status</b></td><td><b>ID</b></td><td><b>Name</b></td><td><b>Adresse</b></td><td><b>Letzter Batteriewechsel</b></td></tr>';
-            $string .= '</table>';
-            $this->SetValue('BatteryList', $string);
-            // Reset critical variables
-            $this->WriteAttributeString('CriticalStateVariables', '{"immediateNotification":[],"dailyNotification":[],"weeklyNotification":[]}');
+            $this->SetValue('BatteryList', '');
             $this->SendDebug(__FUNCTION__, 'Abbruch, es werden keine Variablen überwacht!', 0);
+            // Reset critical state variables
+            $this->WriteAttributeString('CriticalStateVariables', '{"immediateNotification":[],"dailyNotification":[],"weeklyNotification":[]}');
             return;
         }
         $timeStamp = date('d.m.Y, H:i:s');
@@ -80,57 +77,48 @@ trait BAT_variables
                     }
                     // Update battery list
                     array_push($batteryList, [
-                        'ActualStatus'              => $actualStatus,
-                        'Unicode'                   => $unicode,
-                        'ID'                        => $id,
-                        'Name'                      => $name,
-                        'Comment'                   => $comment,
-                        'LastBatteryReplacement'    => $lastBatteryReplacement]);
+                        'ActualStatus'           => $actualStatus,
+                        'Unicode'                => $unicode,
+                        'ID'                     => $id,
+                        'Name'                   => $name,
+                        'Comment'                => $comment,
+                        'LastBatteryReplacement' => $lastBatteryReplacement]);
 
                     // Update critical state variables
                     $criticalStateVariables = json_decode($this->ReadAttributeString('CriticalStateVariables'), true);
-                    if ($this->ReadPropertyBoolean('ImmediateNotification')) {
-                        // Check if variable already exists
-                        $key = array_search($id, array_column($criticalStateVariables['immediateNotification'], 'id'));
-                        // Variable already exists, update actual status and timestamp
-                        if (is_int($key)) {
-                            $criticalStateVariables['immediateNotification'][$key]['actualStatus'] = $actualStatus;
-                            $criticalStateVariables['immediateNotification'][$key]['timestamp'] = $timeStamp;
-                        }
-                        // Variable doesn't exist, add variable to list
-                        else {
-                            array_push($criticalStateVariables['immediateNotification'], ['actualStatus' => $actualStatus, 'id' => $id, 'name' => $name, 'comment' => $comment, 'timestamp' => $timeStamp]);
-                        }
+                    // Check if variable already exists
+                    $key = array_search($id, array_column($criticalStateVariables['immediateNotification'], 'id'));
+                    // Variable already exists, update actual status and timestamp
+                    if (is_int($key)) {
+                        $criticalStateVariables['immediateNotification'][$key]['actualStatus'] = $actualStatus;
+                        $criticalStateVariables['immediateNotification'][$key]['timestamp'] = $timeStamp;
+                    } // Variable doesn't exist, add variable to list
+                    else {
+                        array_push($criticalStateVariables['immediateNotification'], ['actualStatus' => $actualStatus, 'id' => $id, 'name' => $name, 'comment' => $comment, 'timestamp' => $timeStamp]);
                     }
-                    if ($this->ReadPropertyBoolean('DailyNotification')) {
-                        // Check if variable already exists
-                        $key = array_search($id, array_column($criticalStateVariables['dailyNotification'], 'id'));
-                        // Variable already exists, update actual status and timestamp
-                        if (is_int($key)) {
-                            if ($actualStatus != 0) {
-                                $criticalStateVariables['dailyNotification'][$key]['actualStatus'] = $actualStatus;
-                                $criticalStateVariables['dailyNotification'][$key]['timestamp'] = $timeStamp;
-                            }
+                    // Check if variable already exists
+                    $key = array_search($id, array_column($criticalStateVariables['dailyNotification'], 'id'));
+                    // Variable already exists, update actual status and timestamp
+                    if (is_int($key)) {
+                        if ($actualStatus != 0) {
+                            $criticalStateVariables['dailyNotification'][$key]['actualStatus'] = $actualStatus;
+                            $criticalStateVariables['dailyNotification'][$key]['timestamp'] = $timeStamp;
                         }
-                        // Variable doesn't exist, add variable to list
-                        else {
-                            array_push($criticalStateVariables['dailyNotification'], ['actualStatus' => $actualStatus, 'id' => $id, 'name' => $name, 'comment' => $comment, 'timestamp' => $timeStamp]);
-                        }
+                    } // Variable doesn't exist, add variable to list
+                    else {
+                        array_push($criticalStateVariables['dailyNotification'], ['actualStatus' => $actualStatus, 'id' => $id, 'name' => $name, 'comment' => $comment, 'timestamp' => $timeStamp]);
                     }
-                    if ($this->ReadPropertyBoolean('WeeklyNotification')) {
-                        // Check if variable already exists
-                        $key = array_search($id, array_column($criticalStateVariables['weeklyNotification'], 'id'));
-                        // Variable already exists, update actual status and timestamp
-                        if (is_int($key)) {
-                            if ($actualStatus != 0) {
-                                $criticalStateVariables['weeklyNotification'][$key]['actualStatus'] = $actualStatus;
-                                $criticalStateVariables['weeklyNotification'][$key]['timestamp'] = $timeStamp;
-                            }
+                    // Check if variable already exists
+                    $key = array_search($id, array_column($criticalStateVariables['weeklyNotification'], 'id'));
+                    // Variable already exists, update actual status and timestamp
+                    if (is_int($key)) {
+                        if ($actualStatus != 0) {
+                            $criticalStateVariables['weeklyNotification'][$key]['actualStatus'] = $actualStatus;
+                            $criticalStateVariables['weeklyNotification'][$key]['timestamp'] = $timeStamp;
                         }
-                        // Variable doesn't exist, add variable to list
-                        else {
-                            array_push($criticalStateVariables['weeklyNotification'], ['actualStatus' => $actualStatus, 'id' => $id, 'name' => $name, 'comment' => $comment, 'timestamp' => $timeStamp]);
-                        }
+                    } // Variable doesn't exist, add variable to list
+                    else {
+                        array_push($criticalStateVariables['weeklyNotification'], ['actualStatus' => $actualStatus, 'id' => $id, 'name' => $name, 'comment' => $comment, 'timestamp' => $timeStamp]);
                     }
                     $this->WriteAttributeString('CriticalStateVariables', json_encode($criticalStateVariables));
                 }
@@ -256,6 +244,7 @@ trait BAT_variables
         if (IPS_HasChanges($this->InstanceID)) {
             IPS_ApplyChanges($this->InstanceID);
         }
+        $this->ReloadConfiguration();
         echo 'Die Homematic Variablen wurden automatisch ermittelt!';
     }
 
@@ -291,8 +280,7 @@ trait BAT_variables
                     if (!is_null($profileName)) {
                         @IPS_SetVariableCustomProfile($variable->ID, $profileName);
                     }
-                }
-                // Only assign profile, if variable has no profile
+                } // Only assign profile, if variable has no profile
                 else {
                     // Check if variable has a profile
                     $assignedProfile = @IPS_GetVariable($variable->ID)['VariableProfile'];
@@ -473,5 +461,36 @@ trait BAT_variables
             }
         }
         return $result;
+    }
+
+    /**
+     * Cleans up the critical state varibales for non existing variables anymore.
+     */
+    private function CleanUpCriticalStateVariables(): void
+    {
+        $this->SendDebug(__FUNCTION__, 'Die Methode wird ausgeführt. (' . microtime(true) . ')', 0);
+        if (!$this->CheckForExistingVariables()) {
+            $this->SendDebug(__FUNCTION__, 'Abbruch, es werden keine Variablen überwacht!', 0);
+            return;
+        }
+        $monitoredVariables = json_decode($this->ReadPropertyString('MonitoredVariables'), true);
+        $criticalStateVariables = json_decode($this->ReadAttributeString('CriticalStateVariables'), true);
+        // Check daily notification
+        $deletedDailyNotificationVariables = array_diff(array_column($criticalStateVariables['dailyNotification'], 'id'), array_column($monitoredVariables, 'ID'));
+        if (!empty($deletedDailyNotificationVariables)) {
+            foreach ($deletedDailyNotificationVariables as $key => $variable) {
+                unset($criticalStateVariables['dailyNotification'][$key]);
+            }
+        }
+        $criticalStateVariables['dailyNotification'] = array_values($criticalStateVariables['dailyNotification']);
+        // Check weekly notification
+        $deletedWeeklyNotificationVariables = array_diff(array_column($criticalStateVariables['weeklyNotification'], 'id'), array_column($monitoredVariables, 'ID'));
+        if (!empty($deletedWeeklyNotificationVariables)) {
+            foreach ($deletedWeeklyNotificationVariables as $key => $variable) {
+                unset($criticalStateVariables['weeklyNotification'][$key]);
+            }
+        }
+        $criticalStateVariables['weeklyNotification'] = array_values($criticalStateVariables['weeklyNotification']);
+        $this->WriteAttributeString('CriticalStateVariables', json_encode($criticalStateVariables));
     }
 }
