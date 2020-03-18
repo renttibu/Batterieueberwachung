@@ -48,11 +48,11 @@ trait BAT_notification
                     $this->SendDebug(__FUNCTION__, 'Die tägliche Benachrichtigung wird erstellt, Benachrichtigungen werden versendet.', 0);
                     $notification = true;
                     $unicode = json_decode('"\ud83d\udfe2"'); // green_circle
-                    $text = 'Batterieüberwachung: ' . $unicode . ' OK!';
+                    $text = 'Batterieüberwachung OK!';
                     $actualStatus = $this->GetValue('Status');
                     if ($actualStatus) {
                         $unicode = json_decode('"\ud83d\udd34"'); // red_circle
-                        $text = 'Batterieüberwachung: ' . $unicode . ' Alarm!';
+                        $text = 'Alarm Batterieüberwachung!';
                     }
                     if (!$actualStatus && $this->ReadPropertyBoolean('DailyNotificationOnlyOnAlarm')) {
                         $notification = false;
@@ -63,7 +63,7 @@ trait BAT_notification
                         // Push notification
                         if ($this->ReadPropertyBoolean('DailyNotificationUsePushNotification')) {
                             $pushTitle = substr($location, 0, 32);
-                            $pushText = "\n" . $text . "\n" . $timeStamp;
+                            $pushText = "\n" . $text . "\n" . $timeStamp . ' ' . $unicode;
                             @BENA_SendPushNotification($notificationCenter, $pushTitle, $pushText, 4);
                         }
                         // Email notification
@@ -74,7 +74,7 @@ trait BAT_notification
                         }
                         // SMS Notification
                         if ($this->ReadPropertyBoolean('DailyNotificationUseSMSNotification')) {
-                            $smsText = $location . "\n" . $text . "\n" . $timeStamp;
+                            $smsText = $location . "\n" . $text . "\n" . $timeStamp . ' ' . $unicode;
                             @BENA_SendSMSNotification($notificationCenter, $smsText, 4);
                         }
                     }
@@ -138,11 +138,11 @@ trait BAT_notification
                         $this->SendDebug(__FUNCTION__, 'Die wöchentliche Benachrichtigung wird erstellt, Benachrichtigungen werden versendet.', 0);
                         $notification = true;
                         $unicode = json_decode('"\ud83d\udfe2"'); // green_circle
-                        $text = 'Batterieüberwachung: ' . $unicode . ' OK!';
+                        $text = 'Batterieüberwachung OK!';
                         $actualStatus = $this->GetValue('Status');
                         if ($actualStatus) {
                             $unicode = json_decode('"\ud83d\udd34"'); // red_circle
-                            $text = 'Batterieüberwachung: ' . $unicode . ' Alarm!';
+                            $text = 'Alarm Batterieüberwachung!';
                         }
                         if (!$actualStatus && $this->ReadPropertyBoolean('WeeklyNotificationOnlyOnAlarm')) {
                             $notification = false;
@@ -153,7 +153,7 @@ trait BAT_notification
                             // Push notification
                             if ($this->ReadPropertyBoolean('WeeklyNotificationUsePushNotification')) {
                                 $pushTitle = substr($location, 0, 32);
-                                $pushText = "\n" . $text . "\n" . $timeStamp;
+                                $pushText = "\n" . $text . "\n" . $timeStamp . ' ' . $unicode;
                                 @BENA_SendPushNotification($notificationCenter, $pushTitle, $pushText, 4);
                             }
                             // Email notification
@@ -164,7 +164,7 @@ trait BAT_notification
                             }
                             // SMS Notification
                             if ($this->ReadPropertyBoolean('WeeklyNotificationUseSMSNotification')) {
-                                $smsText = $location . "\n" . $text . "\n" . $timeStamp;
+                                $smsText = $location . "\n" . $text . "\n" . $timeStamp . ' ' . $unicode;
                                 @BENA_SendSMSNotification($notificationCenter, $smsText, 4);
                             }
                         }
@@ -216,11 +216,11 @@ trait BAT_notification
             }
             $this->SendDebug(__FUNCTION__, 'Die sofortige Benachrichtigung wird erstellt, Benachrichtigungen werden versendet.', 0);
             $unicode = json_decode('"\ud83d\udfe2"'); // green_circle
-            $text = 'Batterieüberwachung: ' . $unicode . ' OK!';
+            $text = 'Batterieüberwachung OK!';
             $actualStatus = $this->GetValue('Status');
             if ($actualStatus) {
                 $unicode = json_decode('"\ud83d\udd34"'); // red_circle
-                $text = 'Batterieüberwachung: ' . $unicode . ' Alarm!';
+                $text = 'Alarm Batterieüberwachung!';
             }
             if (!$actualStatus && $this->ReadPropertyBoolean('ImmediateNotificationOnlyOnAlarm')) {
                 return;
@@ -247,7 +247,7 @@ trait BAT_notification
             // Push notification
             if ($this->ReadPropertyBoolean('ImmediateNotificationUsePushNotification')) {
                 $pushTitle = substr($location, 0, 32);
-                $pushText = "\n" . $text . "\n" . $timeStamp;
+                $pushText = "\n" . $text . "\n" . $timeStamp . ' ' . $unicode;
                 @BENA_SendPushNotification($notificationCenter, $pushTitle, $pushText, 4);
             }
             // Email notification
@@ -258,7 +258,7 @@ trait BAT_notification
             }
             // SMS Notification
             if ($this->ReadPropertyBoolean('ImmediateNotificationUseSMSNotification')) {
-                $smsText = $location . "\n" . $text . "\n" . $timeStamp;
+                $smsText = $location . "\n" . $text . "\n" . $timeStamp . ' ' . $unicode;
                 @BENA_SendSMSNotification($notificationCenter, $smsText, 4);
             }
             $this->WriteAttributeString('Blacklist', json_encode($blacklist));
