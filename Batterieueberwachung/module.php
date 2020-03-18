@@ -12,7 +12,7 @@
  * @license    	CC BY-NC-SA 4.0
  *              https://creativecommons.org/licenses/by-nc-sa/4.0/
  *
- * @version     4.01-28
+ * @version     4.01-29
  * @date        2020-03-17, 18:00, 1584464400
  * @review      2020-03-17, 18:00
  *
@@ -323,7 +323,8 @@ class Batterieueberwachung extends IPSModule
                 break;
 
             case 'BatteryReplacement':
-                $this->UpdateBatteryReplacement($Value);
+                $variableID = (int) $Value;
+                $this->UpdateBatteryReplacement($variableID);
                 break;
 
         }

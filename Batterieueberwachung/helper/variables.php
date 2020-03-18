@@ -73,7 +73,7 @@ trait BAT_variables
                     $lastBatteryReplacementMonth = $replacementDate->month;
                     $lastBatteryReplacementDay = $replacementDate->day;
                     if ($lastBatteryReplacementYear != 0 && $lastBatteryReplacementMonth != 0 && $lastBatteryReplacementDay != 0) {
-                        $lastBatteryReplacement = $lastBatteryReplacementDay . '.' . $lastBatteryReplacementMonth . '.' . $lastBatteryReplacementYear;
+                        $lastBatteryReplacement = sprintf('%02d', $lastBatteryReplacementDay) . '.' . sprintf('%02d', $lastBatteryReplacementMonth) . '.' . $lastBatteryReplacementYear;
                     }
                     // Update battery list
                     array_push($batteryList, [
