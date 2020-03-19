@@ -218,6 +218,9 @@ trait BAT_variables
             if (!empty($newVariables)) {
                 foreach ($newVariables as $variable) {
                     $name = strstr(@IPS_GetName(@IPS_GetParent($variable)), ':', true);
+                    if (!$name) {
+                        $name = @IPS_GetName(@IPS_GetParent($variable));
+                    }
                     $address = @IPS_GetProperty(@IPS_GetParent($variable), 'Address');
                     $lastBatteryReplacement = '{"year":0, "month":0, "day":0}';
                     array_push($monitoredVariables, [
