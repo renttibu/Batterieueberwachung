@@ -405,8 +405,6 @@ trait BAT_notification
                     if (!$checkBattery && !$checkUpdate) {
                         $disabledVariableAmount++;
                     }
-
-
                 }
             }
             if ($variableAmount > 0) {
