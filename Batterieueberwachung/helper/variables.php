@@ -162,20 +162,20 @@ trait BAT_variables
                             }
                         }
                     }
-                    // Disabled monitoring is next
-                    foreach ($batteryList as $battery) {
-                        $id = $battery['ID'];
-                        if ($id != 0 && IPS_ObjectExists($id)) {
-                            if ($battery['ActualStatus'] == 3) {
-                                $string .= '<tr><td>' . $battery['Unicode'] . '</td><td>' . $id . '</td><td>' . $battery['Name'] . '</td><td>' . $battery['Comment'] . '</td><td>' . $battery['LastBatteryReplacement'] . '</td></tr>';
-                            }
-                        }
-                    }
-                    // Normal status is last
+                    // Normal status is next
                     foreach ($batteryList as $battery) {
                         $id = $battery['ID'];
                         if ($id != 0 && IPS_ObjectExists($id)) {
                             if ($battery['ActualStatus'] == 0) {
+                                $string .= '<tr><td>' . $battery['Unicode'] . '</td><td>' . $id . '</td><td>' . $battery['Name'] . '</td><td>' . $battery['Comment'] . '</td><td>' . $battery['LastBatteryReplacement'] . '</td></tr>';
+                            }
+                        }
+                    }
+                    // Disabled monitoring is last
+                    foreach ($batteryList as $battery) {
+                        $id = $battery['ID'];
+                        if ($id != 0 && IPS_ObjectExists($id)) {
+                            if ($battery['ActualStatus'] == 3) {
                                 $string .= '<tr><td>' . $battery['Unicode'] . '</td><td>' . $id . '</td><td>' . $battery['Name'] . '</td><td>' . $battery['Comment'] . '</td><td>' . $battery['LastBatteryReplacement'] . '</td></tr>';
                             }
                         }

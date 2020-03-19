@@ -444,6 +444,7 @@ trait BAT_notification
                     }
                 }
             }
+            // Disabled monitoring is last
             if ($disabledVariableAmount > 0) {
                 $unicode = json_decode('"\ud83d\udeab"'); // no_entry_sign
                 $text .= "\n\n\n\n";
