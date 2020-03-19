@@ -4,9 +4,9 @@
     "name": "Batterieueberwachung",
     "url": "https://github.com/ubittner/Batterieueberwachung",
     "compatibility": {
-        "version": "5.2"
+        "version": "5.1"
     },
     "version": "4.01",
-    "build": 31,
+    "build": 32,
     "date": 1584464400
 }
