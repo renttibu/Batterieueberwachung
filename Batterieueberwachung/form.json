@@ -26,7 +26,7 @@
         },
         {
           "type": "Label",
-          "caption": "Version:\t\t\t4.01-29"
+          "caption": "Version:\t\t\t4.01-31"
         },
         {
           "type": "Label",
@@ -493,11 +493,6 @@
       "type": "ExpansionPanel",
       "caption": "Konfiguration",
       "items": [
-        {
-          "type": "Button",
-          "caption": "Neu einlesen",
-          "onClick": "BAT_ReloadConfiguration($id);"
-        },
         {
           "type": "RowLayout",
           "items": [

@@ -12,7 +12,7 @@
  * @license    	CC BY-NC-SA 4.0
  *              https://creativecommons.org/licenses/by-nc-sa/4.0/
  *
- * @version     4.01-29
+ * @version     4.01-31
  * @date        2020-03-17, 18:00, 1584464400
  * @review      2020-03-17, 18:00
  *
@@ -155,6 +155,9 @@ class Batterieueberwachung extends IPSModule
 
     public function ReloadConfiguration()
     {
+        if (!$this->CheckVersion()) {
+            return;
+        }
         $this->ReloadForm();
     }
 
@@ -251,6 +254,14 @@ class Batterieueberwachung extends IPSModule
                 'SenderName'          => $senderName,
                 'MessageID'           => $messageID,
                 'MessageDescription'  => $messageDescription];
+        }
+        // Configuration
+        $checkVersion = $this->CheckVersion();
+        if ($checkVersion) {
+            $formData->actions[0]->items[2] = [
+                'type'      => 'Button',
+                'caption'   => 'Neu einlesen',
+                'onClick'   => 'BAT_ReloadConfiguration($id);'];
         }
         // Blacklist
         $blacklist = json_decode($this->ReadAttributeString('Blacklist'), true);
@@ -432,6 +443,16 @@ class Batterieueberwachung extends IPSModule
         IPS_SetHidden($this->GetIDForIdent('BatteryReplacement'), !$this->ReadPropertyBoolean('EnableBatteryReplacement'));
         // Battery list
         IPS_SetHidden($this->GetIDForIdent('BatteryList'), !$this->ReadPropertyBoolean('EnableBatteryList'));
+    }
+
+    private function CheckVersion(): bool
+    {
+        $result = true;
+        $version = IPS_GetKernelVersion();
+        if ($version < 5.2) {
+            $result = false;
+        }
+        return $result;
     }
 
     private function UnregisterMessages(): void
