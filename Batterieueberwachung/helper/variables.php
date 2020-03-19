@@ -42,6 +42,7 @@ trait BAT_variables
                      * 0    = normal
                      * 1    = low battery
                      * 2    = update overdue
+                     * 3    = monitoring disabled
                      */
                     $actualStatus = 0;
                     $unicode = json_decode('"\u2705"'); // white_check_mark
@@ -66,6 +67,10 @@ trait BAT_variables
                             $actualOverallStatus = true;
                         }
                     }
+                    if (!$variable['CheckBattery'] && !$variable['CheckUpdate']) {
+                        $actualStatus = 3;
+                        $unicode = json_decode('"\ud83d\udeab"'); // no_entry_sign
+                    }
                     // Last battery replacement
                     $lastBatteryReplacement = 'Nie';
                     $replacementDate = json_decode($variable['LastBatteryReplacement']);
@@ -86,6 +91,7 @@ trait BAT_variables
 
                     // Update critical state variables
                     $criticalStateVariables = json_decode($this->ReadAttributeString('CriticalStateVariables'), true);
+                    $this->SendDebug(__FUNCTION__, 'Kritische Variablen:' . print_r($criticalStateVariables, true), 0);
                     // Check if variable already exists
                     $key = array_search($id, array_column($criticalStateVariables['immediateNotification'], 'id'));
                     // Variable already exists, update actual status and timestamp
@@ -94,13 +100,15 @@ trait BAT_variables
                         $criticalStateVariables['immediateNotification'][$key]['timestamp'] = $timeStamp;
                     } // Variable doesn't exist, add variable to list
                     else {
-                        array_push($criticalStateVariables['immediateNotification'], ['actualStatus' => $actualStatus, 'id' => $id, 'name' => $name, 'comment' => $comment, 'timestamp' => $timeStamp]);
+                        if ($actualStatus == 1 || $actualStatus == 2) {
+                            array_push($criticalStateVariables['immediateNotification'], ['actualStatus' => $actualStatus, 'id' => $id, 'name' => $name, 'comment' => $comment, 'timestamp' => $timeStamp]);
+                        }
                     }
                     // Check if variable already exists
                     $key = array_search($id, array_column($criticalStateVariables['dailyNotification'], 'id'));
                     // Variable already exists, update actual status and timestamp
                     if (is_int($key)) {
-                        if ($actualStatus != 0) {
+                        if ($actualStatus == 1 || $actualStatus == 2) {
                             $criticalStateVariables['dailyNotification'][$key]['actualStatus'] = $actualStatus;
                             $criticalStateVariables['dailyNotification'][$key]['timestamp'] = $timeStamp;
                         }
@@ -112,7 +120,7 @@ trait BAT_variables
                     $key = array_search($id, array_column($criticalStateVariables['weeklyNotification'], 'id'));
                     // Variable already exists, update actual status and timestamp
                     if (is_int($key)) {
-                        if ($actualStatus != 0) {
+                        if ($actualStatus == 1 || $actualStatus == 2) {
                             $criticalStateVariables['weeklyNotification'][$key]['actualStatus'] = $actualStatus;
                             $criticalStateVariables['weeklyNotification'][$key]['timestamp'] = $timeStamp;
                         }
@@ -150,6 +158,15 @@ trait BAT_variables
                         $id = $battery['ID'];
                         if ($id != 0 && IPS_ObjectExists($id)) {
                             if ($battery['ActualStatus'] == 1) {
+                                $string .= '<tr><td>' . $battery['Unicode'] . '</td><td>' . $id . '</td><td>' . $battery['Name'] . '</td><td>' . $battery['Comment'] . '</td><td>' . $battery['LastBatteryReplacement'] . '</td></tr>';
+                            }
+                        }
+                    }
+                    // Disabled monitoring is next
+                    foreach ($batteryList as $battery) {
+                        $id = $battery['ID'];
+                        if ($id != 0 && IPS_ObjectExists($id)) {
+                            if ($battery['ActualStatus'] == 3) {
                                 $string .= '<tr><td>' . $battery['Unicode'] . '</td><td>' . $id . '</td><td>' . $battery['Name'] . '</td><td>' . $battery['Comment'] . '</td><td>' . $battery['LastBatteryReplacement'] . '</td></tr>';
                             }
                         }

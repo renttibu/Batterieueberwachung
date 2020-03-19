@@ -12,7 +12,7 @@
  * @license    	CC BY-NC-SA 4.0
  *              https://creativecommons.org/licenses/by-nc-sa/4.0/
  *
- * @version     4.01-33
+ * @version     4.01-34
  * @date        2020-03-17, 18:00, 1584464400
  * @review      2020-03-17, 18:00
  *
@@ -200,6 +200,9 @@ class Batterieueberwachung extends IPSModule
                             $unicode = json_decode('"\u2757"'); // heavy_exclamation_mark
                         }
                     }
+                    if (!$variable['CheckBattery'] && !$variable['CheckUpdate']) {
+                        $unicode = json_decode('"\ud83d\udeab"'); // no_entry_sign
+                    }
                 }
                 $formData->elements[2]->items[1]->values[] = [
                     'ActualStatus'            => $unicode,
@@ -287,7 +290,7 @@ class Batterieueberwachung extends IPSModule
         if (!empty($criticalVariables)) {
             foreach ($criticalVariables as $variable) {
                 $actualStatus = $variable['actualStatus'];
-                if ($actualStatus != 0) {
+                if ($actualStatus == 1 || $actualStatus == 2) {
                     $unicode = json_decode('"\u26a0\ufe0f"'); // warning
                     if ($actualStatus == 2) {
                         $unicode = json_decode('"\u2757"'); // heavy_exclamation_mark
@@ -306,7 +309,7 @@ class Batterieueberwachung extends IPSModule
         if (!empty($criticalVariables)) {
             foreach ($criticalVariables as $variable) {
                 $actualStatus = $variable['actualStatus'];
-                if ($actualStatus != 0) {
+                if ($actualStatus == 1 || $actualStatus == 2) {
                     $unicode = json_decode('"\u26a0\ufe0f"'); // warning
                     if ($actualStatus == 2) {
                         $unicode = json_decode('"\u2757"'); // heavy_exclamation_mark

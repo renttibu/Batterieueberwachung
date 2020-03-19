@@ -368,12 +368,15 @@ trait BAT_notification
             });
             $monitoredVariables = array_values($monitoredVariables);
             $variableAmount = 0;
+            $disabledVariableAmount = 0;
             foreach ($monitoredVariables as $variable) {
                 $id = $variable['ID'];
                 if ($id != 0 && IPS_ObjectExists($id)) {
                     // Check low battery
                     $lowBattery = true;
+                    $checkBattery = false;
                     if ($variable['CheckBattery']) {
+                        $checkBattery = true;
                         $actualValue = boolval(GetValue($id));
                         $alertingValue = boolval($variable['AlertingValue']);
                         if ($actualValue != $alertingValue) {
@@ -384,7 +387,9 @@ trait BAT_notification
                     }
                     // Check update overdue
                     $updateOverdue = true;
+                    $checkUpdate = false;
                     if ($variable['CheckUpdate']) {
+                        $checkUpdate = true;
                         $now = time();
                         $variableUpdate = IPS_GetVariable($id)['VariableUpdated'];
                         $dateDifference = ($now - $variableUpdate) / (60 * 60 * 24);
@@ -397,6 +402,11 @@ trait BAT_notification
                     if (!$lowBattery && !$updateOverdue) {
                         $variableAmount++;
                     }
+                    if (!$checkBattery && !$checkUpdate) {
+                        $disabledVariableAmount++;
+                    }
+
+
                 }
             }
             if ($variableAmount > 0) {
@@ -431,6 +441,20 @@ trait BAT_notification
                             $updateOverdue = false;
                         }
                         if (!$lowBattery && !$updateOverdue) {
+                            $text .= $unicode . ' ' . $variable['Name'] . ' (ID ' . $id . ', ' . $variable['Comment'] . ', ' . $timeStamp . ")\n";
+                        }
+                    }
+                }
+            }
+            if ($disabledVariableAmount > 0) {
+                $unicode = json_decode('"\ud83d\udeab"'); // no_entry_sign
+                $text .= "\n\n\n\n";
+                $text .= "Keine Überwachung:\n\n";
+                $timeStamp = date('d.m.Y, H:i:s');
+                foreach ($monitoredVariables as $variable) {
+                    $id = $variable['ID'];
+                    if ($id != 0 && IPS_ObjectExists($id)) {
+                        if (!$variable['CheckBattery'] && !$variable['CheckUpdate']) {
                             $text .= $unicode . ' ' . $variable['Name'] . ' (ID ' . $id . ', ' . $variable['Comment'] . ', ' . $timeStamp . ")\n";
                         }
                     }

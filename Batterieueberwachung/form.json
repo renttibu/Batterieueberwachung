@@ -26,7 +26,7 @@
         },
         {
           "type": "Label",
-          "caption": "Version:\t\t\t4.01-33"
+          "caption": "Version:\t\t\t4.01-34"
         },
         {
           "type": "Label",
@@ -46,7 +46,7 @@
         },
         {
           "type": "Label",
-          "caption": "Symbole:\t\t\u2757\tÜberfällige Aktualisierung\n\t\t\t\t\u26a0\ufe0f\tSchwache Batterie\n\t\t\t\t\u2705\tOK"
+          "caption": "Symbole:\t\t\u2757\tÜberfällige Aktualisierung\n\t\t\t\t\u26a0\ufe0f\tSchwache Batterie\n\t\t\t\t\uD83D\uDEAB\tKeine Überwachung\n\t\t\t\t\u2705\tOK\n"
         }
       ]
     },
