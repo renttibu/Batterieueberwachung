@@ -384,7 +384,8 @@
             {
               "type": "Label",
               "caption": " "
-            },{
+            },
+            {
               "type": "Select",
               "name": "WeeklyNotificationDay",
               "caption": "Wochentag",
