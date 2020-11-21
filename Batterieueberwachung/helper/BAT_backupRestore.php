@@ -1,11 +1,28 @@
 <?php
 
-// Declare
+/** @noinspection PhpUnused */
+
+/*
+ * @module      Batterieueberwachung
+ *
+ * @prefix      BAT
+ *
+ * @file        BAT_backupRestore.php
+ *
+ * @author      Ulrich Bittner
+ * @copyright   (c) 2020
+ * @license    	CC BY-NC-SA 4.0
+ *              https://creativecommons.org/licenses/by-nc-sa/4.0/
+ *
+ * @see         https://github.com/ubittner/Batterieueberwachung/
+ *
+ */
+
 declare(strict_types=1);
 
 trait BAT_backupRestore
 {
-    //#################### Backup
+    #################### Backup
 
     /**
      * Creates a backup of the actual configuration into a script.
@@ -17,7 +34,6 @@ trait BAT_backupRestore
         if (IPS_GetInstance($this->InstanceID)['InstanceStatus'] == 102) {
             $name = 'Konfiguration (' . IPS_GetName($this->InstanceID) . ' #' . $this->InstanceID . ') ' . date('d.m.Y H:i:s');
             $config = IPS_GetConfiguration($this->InstanceID);
-            // Create backup
             $content = "<?php\n// Backup " . date('d.m.Y, H:i:s') . "\n// " . $this->InstanceID . "\n$" . "config = '" . $config . "';";
             $backupScript = IPS_CreateScript(0);
             IPS_SetParent($backupScript, $BackupCategory);
@@ -28,7 +44,7 @@ trait BAT_backupRestore
         }
     }
 
-    //#################### Restore
+    #################### Restore
 
     /**
      * Restores a configuration form selected script.

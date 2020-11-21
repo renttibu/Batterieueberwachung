@@ -1,6 +1,23 @@
 <?php
 
-// Declare
+/** @noinspection PhpUnused */
+
+/*
+ * @module      Batterieueberwachung
+ *
+ * @prefix      BAT
+ *
+ * @file        BAT_variables.php
+ *
+ * @author      Ulrich Bittner
+ * @copyright   (c) 2020
+ * @license    	CC BY-NC-SA 4.0
+ *              https://creativecommons.org/licenses/by-nc-sa/4.0/
+ *
+ * @see         https://github.com/ubittner/Batterieueberwachung/
+ *
+ */
+
 declare(strict_types=1);
 
 trait BAT_variables
@@ -12,25 +29,27 @@ trait BAT_variables
      * 0    = immediate notification
      * 1    = daily notification
      * 2    = weekly notification
+     *
+     * @throws Exception
      */
     public function CheckMonitoredVariables(int $Mode): void
     {
         $this->SendDebug(__FUNCTION__, 'Die Methode wird ausgeführt. (' . microtime(true) . ')', 0);
         $actualOverallStatus = false;
-        // Check for existing variables
+        //Check for existing variables
         if (!$this->CheckForExistingVariables()) {
-            // Reset value
+            //Reset value
             $this->SetValue('Status', $actualOverallStatus);
-            // Clear battery list
+            //Clear battery list
             $this->SetValue('BatteryList', '');
             $this->SendDebug(__FUNCTION__, 'Abbruch, es werden keine Variablen überwacht!', 0);
-            // Reset critical state variables
+            //Reset critical state variables
             $this->WriteAttributeString('CriticalStateVariables', '{"immediateNotification":[],"dailyNotification":[],"weeklyNotification":[]}');
             return;
         }
         $timeStamp = date('d.m.Y, H:i:s');
         $batteryList = [];
-        // Check variables
+        //Check variables
         $monitoredVariables = json_decode($this->ReadPropertyString('MonitoredVariables'), true);
         if (!empty($monitoredVariables)) {
             foreach ($monitoredVariables as $variable) {
@@ -45,33 +64,33 @@ trait BAT_variables
                      * 3    = monitoring disabled
                      */
                     $actualStatus = 0;
-                    $unicode = json_decode('"\u2705"'); // white_check_mark
-                    // Check for low battery
+                    $unicode = json_decode('"\u2705"'); # white_check_mark
+                    //Check for low battery
                     if ($variable['CheckBattery']) {
                         $actualValue = boolval(GetValue($id));
                         $alertingValue = boolval($variable['AlertingValue']);
                         if ($actualValue == $alertingValue) {
                             $actualStatus = 1;
-                            $unicode = json_decode('"\u26a0\ufe0f"'); // warning
+                            $unicode = json_decode('"\u26a0\ufe0f"'); # warning
                             $actualOverallStatus = true;
                         }
                     }
-                    // Check for update overdue
+                    //Check for update overdue
                     if ($variable['CheckUpdate']) {
                         $now = time();
                         $variableUpdate = IPS_GetVariable($id)['VariableUpdated'];
                         $dateDifference = ($now - $variableUpdate) / (60 * 60 * 24);
                         if ($dateDifference > $variable['UpdatePeriod']) {
                             $actualStatus = 2;
-                            $unicode = json_decode('"\u2757"'); // heavy_exclamation_mark
+                            $unicode = json_decode('"\u2757"'); # heavy_exclamation_mark
                             $actualOverallStatus = true;
                         }
                     }
                     if (!$variable['CheckBattery'] && !$variable['CheckUpdate']) {
                         $actualStatus = 3;
-                        $unicode = json_decode('"\ud83d\udeab"'); // no_entry_sign
+                        $unicode = json_decode('"\ud83d\udeab"'); # no_entry_sign
                     }
-                    // Last battery replacement
+                    //Last battery replacement
                     $lastBatteryReplacement = 'Nie';
                     $replacementDate = json_decode($variable['LastBatteryReplacement']);
                     $lastBatteryReplacementYear = $replacementDate->year;
@@ -80,7 +99,7 @@ trait BAT_variables
                     if ($lastBatteryReplacementYear != 0 && $lastBatteryReplacementMonth != 0 && $lastBatteryReplacementDay != 0) {
                         $lastBatteryReplacement = sprintf('%02d', $lastBatteryReplacementDay) . '.' . sprintf('%02d', $lastBatteryReplacementMonth) . '.' . $lastBatteryReplacementYear;
                     }
-                    // Update battery list
+                    //Update battery list
                     array_push($batteryList, [
                         'ActualStatus'           => $actualStatus,
                         'Unicode'                => $unicode,
@@ -89,59 +108,59 @@ trait BAT_variables
                         'Comment'                => $comment,
                         'LastBatteryReplacement' => $lastBatteryReplacement]);
 
-                    // Update critical state variables
+                    //Update critical state variables
                     $criticalStateVariables = json_decode($this->ReadAttributeString('CriticalStateVariables'), true);
                     $this->SendDebug(__FUNCTION__, 'Kritische Variablen:' . print_r($criticalStateVariables, true), 0);
-                    // Check if variable already exists
+                    //Check if variable already exists
                     $key = array_search($id, array_column($criticalStateVariables['immediateNotification'], 'id'));
-                    // Variable already exists, update actual status and timestamp
+                    //Variable already exists, update actual status and timestamp
                     if (is_int($key)) {
                         $criticalStateVariables['immediateNotification'][$key]['actualStatus'] = $actualStatus;
                         $criticalStateVariables['immediateNotification'][$key]['timestamp'] = $timeStamp;
-                    } // Variable doesn't exist, add variable to list
+                    } //Variable doesn't exist, add variable to list
                     else {
                         if ($actualStatus == 1 || $actualStatus == 2) {
                             array_push($criticalStateVariables['immediateNotification'], ['actualStatus' => $actualStatus, 'id' => $id, 'name' => $name, 'comment' => $comment, 'timestamp' => $timeStamp]);
                         }
                     }
-                    // Check if variable already exists
+                    //Check if variable already exists
                     $key = array_search($id, array_column($criticalStateVariables['dailyNotification'], 'id'));
-                    // Variable already exists, update actual status and timestamp
+                    //Variable already exists, update actual status and timestamp
                     if (is_int($key)) {
                         if ($actualStatus == 1 || $actualStatus == 2) {
                             $criticalStateVariables['dailyNotification'][$key]['actualStatus'] = $actualStatus;
                             $criticalStateVariables['dailyNotification'][$key]['timestamp'] = $timeStamp;
                         }
-                    } // Variable doesn't exist, add variable to list
+                    } //Variable doesn't exist, add variable to list
                     else {
                         array_push($criticalStateVariables['dailyNotification'], ['actualStatus' => $actualStatus, 'id' => $id, 'name' => $name, 'comment' => $comment, 'timestamp' => $timeStamp]);
                     }
-                    // Check if variable already exists
+                    //Check if variable already exists
                     $key = array_search($id, array_column($criticalStateVariables['weeklyNotification'], 'id'));
-                    // Variable already exists, update actual status and timestamp
+                    //Variable already exists, update actual status and timestamp
                     if (is_int($key)) {
                         if ($actualStatus == 1 || $actualStatus == 2) {
                             $criticalStateVariables['weeklyNotification'][$key]['actualStatus'] = $actualStatus;
                             $criticalStateVariables['weeklyNotification'][$key]['timestamp'] = $timeStamp;
                         }
-                    } // Variable doesn't exist, add variable to list
+                    } //Variable doesn't exist, add variable to list
                     else {
                         array_push($criticalStateVariables['weeklyNotification'], ['actualStatus' => $actualStatus, 'id' => $id, 'name' => $name, 'comment' => $comment, 'timestamp' => $timeStamp]);
                     }
                     $this->WriteAttributeString('CriticalStateVariables', json_encode($criticalStateVariables));
                 }
             }
-            // Battery List for WebFront
+            //Battery List for WebFront
             $string = '';
             if ($this->ReadPropertyBoolean('EnableBatteryList')) {
                 $string = "<table style='width: 100%; border-collapse: collapse;'>";
                 $string .= '<tr><td><b>Status</b></td><td><b>ID</b></td><td><b>Name</b></td><td><b>Bemerkung</b></td><td><b>Letzter Batteriewechsel</b></td></tr>';
-                // Sort variables by name
+                //Sort variables by name
                 usort($batteryList, function ($a, $b)
                 {
                     return $a['Name'] <=> $b['Name'];
                 });
-                // Rebase array
+                //Rebase array
                 $batteryList = array_values($batteryList);
                 if (!empty($batteryList)) {
                     // Show update overdue first
@@ -153,7 +172,7 @@ trait BAT_variables
                             }
                         }
                     }
-                    // Low battery is next
+                    //Low battery is next
                     foreach ($batteryList as $battery) {
                         $id = $battery['ID'];
                         if ($id != 0 && IPS_ObjectExists($id)) {
@@ -162,7 +181,7 @@ trait BAT_variables
                             }
                         }
                     }
-                    // Normal status is next
+                    //Normal status is next
                     foreach ($batteryList as $battery) {
                         $id = $battery['ID'];
                         if ($id != 0 && IPS_ObjectExists($id)) {
@@ -171,7 +190,7 @@ trait BAT_variables
                             }
                         }
                     }
-                    // Disabled monitoring is last
+                    //Disabled monitoring is last
                     foreach ($batteryList as $battery) {
                         $id = $battery['ID'];
                         if ($id != 0 && IPS_ObjectExists($id)) {
@@ -184,18 +203,13 @@ trait BAT_variables
                 $string .= '</table>';
             }
             $this->SetValue('BatteryList', $string);
-            // Set status
+            //Set status
             $lastOverallStatus = $this->GetValue('Status');
             $this->SetValue('Status', $actualOverallStatus);
             if ($this->GetValue('Monitoring')) {
                 if ($actualOverallStatus != $lastOverallStatus) {
                     if ($Mode == 0) {
                         $this->TriggerImmediateNotification();
-                    }
-                    // Notification script
-                    $id = $this->ReadPropertyInteger('NotificationScript');
-                    if ($id != 0 && IPS_ObjectExists($id)) {
-                        IPS_RunScriptEx($id, ['MonitoringStatus' => $actualOverallStatus]);
                     }
                 }
             }
@@ -221,16 +235,16 @@ trait BAT_variables
                         $match = true;
                     }
                     if ($match) {
-                        // Check for variable
+                        //Check for variable
                         if ($object['ObjectType'] == 2) {
                             array_push($variables, ['ID' => $child]);
                         }
                     }
                 }
             }
-            // Get already listed variables
+            //Get already listed variables
             $monitoredVariables = json_decode($this->ReadPropertyString('MonitoredVariables'), true);
-            // Add new variables
+            //Add new variables
             $newVariables = array_diff(array_column($variables, 'ID'), array_column($monitoredVariables, 'ID'));
             if (!empty($newVariables)) {
                 foreach ($newVariables as $variable) {
@@ -252,14 +266,14 @@ trait BAT_variables
                 }
             }
         }
-        // Sort variables by name
+        //Sort variables by name
         usort($monitoredVariables, function ($a, $b)
         {
             return $a['Name'] <=> $b['Name'];
         });
-        // Rebase array
+        //Rebase array
         $monitoredVariables = array_values($monitoredVariables);
-        // Update variable list
+        //Update variable list
         IPS_SetProperty($this->InstanceID, 'MonitoredVariables', json_encode($monitoredVariables));
         if (IPS_HasChanges($this->InstanceID)) {
             IPS_ApplyChanges($this->InstanceID);
@@ -279,7 +293,7 @@ trait BAT_variables
     {
         $this->SendDebug(__FUNCTION__, 'Die Methode wird ausgeführt. (' . microtime(true) . ')', 0);
         $this->SendDebug(__FUNCTION__, 'Parameter $Override = ' . json_encode($Override), 0);
-        // Assign profile only for listed variables
+        //Assign profile only for listed variables
         $monitoredVariables = json_decode($this->ReadPropertyString('MonitoredVariables'));
         if (!empty($monitoredVariables)) {
             foreach ($monitoredVariables as $variable) {
@@ -287,22 +301,22 @@ trait BAT_variables
                 $profileName = null;
                 switch ($variableType) {
                     case 1:
-                        // Integer
+                        //Integer
                         $profileName = 'BAT.Battery.Integer';
                         break;
 
                     default:
-                        // Boolean
+                        //Boolean
                         $profileName = 'BAT.Battery.Boolean';
                 }
-                // Always assign profile
+                //Always assign profile
                 if ($Override) {
                     if (!is_null($profileName)) {
                         @IPS_SetVariableCustomProfile($variable->ID, $profileName);
                     }
-                } // Only assign profile, if variable has no profile
+                } //Only assign profile, if variable has no profile
                 else {
-                    // Check if variable has a profile
+                    //Check if variable has a profile
                     $assignedProfile = @IPS_GetVariable($variable->ID)['VariableProfile'];
                     if (empty($assignedProfile)) {
                         @IPS_SetVariableCustomProfile($variable->ID, $profileName);
@@ -322,7 +336,7 @@ trait BAT_variables
     {
         $this->SendDebug(__FUNCTION__, 'Die Methode wird ausgeführt. (' . microtime(true) . ')', 0);
         $icon = 'Battery';
-        // Get all monitored variables
+        //Get all monitored variables
         $monitoredVariables = json_decode($this->ReadPropertyString('MonitoredVariables'));
         $targetIDs = [];
         $i = 0;
@@ -332,9 +346,9 @@ trait BAT_variables
                 $i++;
             }
         }
-        // Sort array alphabetically by device name
+        //Sort array alphabetically by device name
         sort($targetIDs);
-        // Get all existing links (links have not an ident field, so we use the object info field)
+        //Get all existing links (links have not an ident field, so we use the object info field)
         $existingTargetIDs = [];
         $links = @IPS_GetLinkList();
         if (!empty($links)) {
@@ -342,14 +356,14 @@ trait BAT_variables
             foreach ($links as $link) {
                 $linkInfo = @IPS_GetObject($link)['ObjectInfo'];
                 if ($linkInfo == 'BAT.' . $this->InstanceID) {
-                    // Get target id
+                    //Get target id
                     $existingTargetID = @IPS_GetLink($link)['TargetID'];
                     $existingTargetIDs[$i] = ['linkID' => $link, 'targetID' => $existingTargetID];
                     $i++;
                 }
             }
         }
-        // Delete dead links
+        //Delete dead links
         $deadLinks = array_diff(array_column($existingTargetIDs, 'targetID'), array_column($targetIDs, 'targetID'));
         if (!empty($deadLinks)) {
             foreach ($deadLinks as $targetID) {
@@ -360,7 +374,7 @@ trait BAT_variables
                 }
             }
         }
-        // Create new links
+        //Create new links
         $newLinks = array_diff(array_column($targetIDs, 'targetID'), array_column($existingTargetIDs, 'targetID'));
         if (!empty($newLinks)) {
             foreach ($newLinks as $targetID) {
@@ -375,7 +389,7 @@ trait BAT_variables
                 @IPS_SetIcon($linkID, $icon);
             }
         }
-        // Edit existing links
+        //Edit existing links
         $existingLinks = array_intersect(array_column($existingTargetIDs, 'targetID'), array_column($targetIDs, 'targetID'));
         if (!empty($existingLinks)) {
             foreach ($existingLinks as $targetID) {
@@ -435,16 +449,16 @@ trait BAT_variables
         }
         $timeStamp = date('d.m.Y, H:i:s');
         $criticalStateVariables = json_decode($this->ReadAttributeString('CriticalStateVariables'), true);
-        // Check if variable already exists in daily notification
+        //Check if variable already exists in daily notification
         $key = array_search($VariableID, array_column($criticalStateVariables['dailyNotification'], 'id'));
-        // Variable already exists, update actual status and timestamp
+        //Variable already exists, update actual status and timestamp
         if (is_int($key)) {
             $criticalStateVariables['dailyNotification'][$key]['actualStatus'] = 0; // Battery OK
             $criticalStateVariables['dailyNotification'][$key]['timestamp'] = $timeStamp;
         }
-        // Check if variable already exists in weekly notification
+        //Check if variable already exists in weekly notification
         $key = array_search($VariableID, array_column($criticalStateVariables['weeklyNotification'], 'id'));
-        // Variable already exists, update actual status and timestamp
+        //Variable already exists, update actual status and timestamp
         if (is_int($key)) {
             $criticalStateVariables['weeklyNotification'][$key]['actualStatus'] = 0; // Battery OK
             $criticalStateVariables['weeklyNotification'][$key]['timestamp'] = $timeStamp;
@@ -456,7 +470,7 @@ trait BAT_variables
         }
     }
 
-    //#################### Private
+    #################### Private
 
     /**
      * Checks for existing variables for monitoring.
@@ -495,7 +509,7 @@ trait BAT_variables
         }
         $monitoredVariables = json_decode($this->ReadPropertyString('MonitoredVariables'), true);
         $criticalStateVariables = json_decode($this->ReadAttributeString('CriticalStateVariables'), true);
-        // Check immediate notification
+        //Check immediate notification
         $deletedImmediateNotificationVariables = array_diff(array_column($criticalStateVariables['immediateNotification'], 'id'), array_column($monitoredVariables, 'ID'));
         if (!empty($deletedImmediateNotificationVariables)) {
             foreach ($deletedImmediateNotificationVariables as $key => $variable) {
@@ -503,7 +517,7 @@ trait BAT_variables
             }
         }
         $criticalStateVariables['dailyNotification'] = array_values($criticalStateVariables['dailyNotification']);
-        // Check daily notification
+        //Check daily notification
         $deletedDailyNotificationVariables = array_diff(array_column($criticalStateVariables['dailyNotification'], 'id'), array_column($monitoredVariables, 'ID'));
         if (!empty($deletedDailyNotificationVariables)) {
             foreach ($deletedDailyNotificationVariables as $key => $variable) {
@@ -511,7 +525,7 @@ trait BAT_variables
             }
         }
         $criticalStateVariables['dailyNotification'] = array_values($criticalStateVariables['dailyNotification']);
-        // Check weekly notification
+        //Check weekly notification
         $deletedWeeklyNotificationVariables = array_diff(array_column($criticalStateVariables['weeklyNotification'], 'id'), array_column($monitoredVariables, 'ID'));
         if (!empty($deletedWeeklyNotificationVariables)) {
             foreach ($deletedWeeklyNotificationVariables as $key => $variable) {

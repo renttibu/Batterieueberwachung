@@ -1,5 +1,7 @@
 <?php
 
+/** @noinspection PhpUnused */
+
 /*
  * @module      Batterieueberwachung
  *
@@ -12,23 +14,14 @@
  * @license    	CC BY-NC-SA 4.0
  *              https://creativecommons.org/licenses/by-nc-sa/4.0/
  *
- * @version     4.01-36
- * @date        2020-03-17, 18:00, 1584464400
- * @review      2020-03-17, 18:00
- *
  * @see         https://github.com/ubittner/Batterieueberwachung/
  *
- * @guids       Library
- *              {33FD5726-16B7-67D3-7E09-3AEC76466CB8}
- *
- *              Batterieueberwachung
- *             	{3E34CE2F-B59B-8634-DF27-0293F2B700FF}
  */
 
 /*
  * Monitoring:
  * Monitoring is always performed.
- * If "Monitoring" is disabled in WebFront, it has no effect on monitoring or battery list, just no notification will be sent.
+ * If "Monitoring" is disabled in WebFront, it has no effect on monitoring or the battery list, just no notification will be sent.
  *
  * Critical status:
  * Low battery will only determined as low battery, if "CheckBattery" from configuration form is enabled.
@@ -41,84 +34,53 @@
  * Email notification will send a detailed report at execution time and mode.
  */
 
-// Declare
 declare(strict_types=1);
 
-// Include
 include_once __DIR__ . '/helper/autoload.php';
 
 class Batterieueberwachung extends IPSModule
 {
-    // Helper
+    //Helper
     use BAT_backupRestore;
     use BAT_notification;
     use BAT_variables;
 
-    // Constants
+    //Constants
     private const HOMEMATIC_DEVICE_GUID = '{EE4A81C6-5C90-4DB7-AD2F-F6BBD521412E}';
-    private const NOTIFICATION_CENTER_GUID = '{D184C522-507F-BED6-6731-728CE156D659}';
 
     public function Create()
     {
-        // Never delete this line!
+        //Never delete this line!
         parent::Create();
-
-        // Register properties
         $this->RegisterProperties();
-
-        // Create profiles
         $this->CreateProfiles();
-
-        // Register variables
         $this->RegisterVariables();
-
-        // Register timers
         $this->RegisterTimers();
-
-        // Register attributes
         $this->RegisterAttributes();
     }
 
     public function ApplyChanges()
     {
-        // Wait until IP-Symcon is started
+        //Wait until IP-Symcon is started
         $this->RegisterMessage(0, IPS_KERNELSTARTED);
-
-        // Never delete this line!
+        //Never delete this line!
         parent::ApplyChanges();
-
-        // Check runlevel
+        //Check runlevel
         if (IPS_GetKernelRunlevel() != KR_READY) {
             return;
         }
-
-        // Register messages
         $this->RegisterMessages();
-
-        // Set timer
         $this->SetDailyNotificationTimer();
         $this->SetWeeklyNotificationTimer();
-
-        // Set Options
         $this->SetOptions();
-
-        // Reset blacklist
         $this->ResetBlacklist();
-
-        // Check status
         $this->CheckMonitoredVariables(0);
-
-        // Clean up critical state variables
         $this->CleanUpCriticalStateVariables();
     }
 
     public function MessageSink($TimeStamp, $SenderID, $Message, $Data): void
     {
-        // Send debug
-        // $Data[0] = actual value
-        // $Data[1] = value changed
-        // $Data[2] = last value
-        $this->SendDebug(__FUNCTION__, 'SenderID: ' . $SenderID . ', Message: ' . $Message . ', Data: ' . print_r($Data, true), 0);
+        $this->SendDebug('MessageSink', 'Message from SenderID ' . $SenderID . ' with Message ' . $Message . "\r\n Data: " . print_r($Data, true), 0);
         if (!empty($Data)) {
             foreach ($Data as $key => $value) {
                 $this->SendDebug(__FUNCTION__, 'Data[' . $key . '] = ' . json_encode($value), 0);
@@ -130,6 +92,12 @@ class Batterieueberwachung extends IPSModule
                 break;
 
             case VM_UPDATE:
+                //$Data[0] = actual value
+                //$Data[1] = value changed
+                //$Data[2] = last value
+                //$Data[3] = timestamp actual value
+                //$Data[4] = timestamp value changed
+                //$Data[5] = timestamp last value
                $this->CheckMonitoredVariables(0);
                 break;
 
@@ -139,25 +107,15 @@ class Batterieueberwachung extends IPSModule
         }
     }
 
-    private function KernelReady()
-    {
-        $this->ApplyChanges();
-    }
-
     public function Destroy()
     {
-        // Never delete this line!
+        //Never delete this line!
         parent::Destroy();
-
-        // Delete profiles
         $this->DeleteProfiles();
     }
 
     public function ReloadConfiguration()
     {
-        if (!$this->CheckVersion()) {
-            return;
-        }
         $this->ReloadForm();
     }
 
@@ -169,42 +127,42 @@ class Batterieueberwachung extends IPSModule
         if (!empty($monitoredVariables)) {
             foreach ($monitoredVariables as $variable) {
                 $rowColor = '';
-                $unicode = json_decode('"\u2705"'); // white_check_mark
+                $unicode = json_decode('"\u2705"'); # white_check_mark
                 $actualValue = 0;
                 $lastUpdate = 'Nie';
                 if (!IPS_ObjectExists($variable['ID'])) {
                     $unicode = '';
-                    $rowColor = '#FFC0C0'; // light red
+                    $rowColor = '#FFC0C0'; # red
                 } else {
-                    // Check battery
+                    //Check battery
                     $actualValue = boolval(GetValue($variable['ID']));
                     if ($variable['CheckBattery']) {
                         $alertingValue = boolval($variable['AlertingValue']);
                         if ($actualValue == $alertingValue) {
-                            $unicode = json_decode('"\u26a0\ufe0f"'); // warning
+                            $unicode = json_decode('"\u26a0\ufe0f"'); # warning
                         }
                     }
-                    // Check update
+                    //Check update
                     $variableUpdate = IPS_GetVariable($variable['ID'])['VariableUpdated'];
                     if ($variableUpdate != 0) {
                         $lastUpdate = date('d.m.Y', $variableUpdate);
                     }
                     if ($variable['CheckUpdate']) {
                         if ($variableUpdate == 0) {
-                            $unicode = json_decode('"\u2757"'); // heavy_exclamation_mark
+                            $unicode = json_decode('"\u2757"'); # heavy_exclamation_mark
                         }
                         $now = time();
                         $dateDifference = ($now - $variableUpdate) / (60 * 60 * 24);
                         $updatePeriod = $variable['UpdatePeriod'];
                         if ($dateDifference > $updatePeriod) {
-                            $unicode = json_decode('"\u2757"'); // heavy_exclamation_mark
+                            $unicode = json_decode('"\u2757"'); # heavy_exclamation_mark
                         }
                     }
                     if (!$variable['CheckBattery'] && !$variable['CheckUpdate']) {
-                        $unicode = json_decode('"\ud83d\udeab"'); // no_entry_sign
+                        $unicode = json_decode('"\ud83d\udeab"'); # no_entry_sign
                     }
                 }
-                $formData->elements[2]->items[1]->values[] = [
+                $formData->elements[1]->items[0]->values[] = [
                     'ActualStatus'            => $unicode,
                     'ID'                      => $variable['ID'],
                     'Name'                    => $variable['Name'],
@@ -219,21 +177,14 @@ class Batterieueberwachung extends IPSModule
                     'rowColor'                => $rowColor];
             }
         }
-        // Registered messages
-        $registeredVariables = $this->GetMessageList();
-        foreach ($registeredVariables as $senderID => $messageID) {
-            if (!IPS_ObjectExists($senderID)) {
-                foreach ($messageID as $messageType) {
-                    $this->UnregisterMessage($senderID, $messageType);
-                }
-                continue;
-            } else {
+        //Registered messages
+        $messages = $this->GetMessageList();
+        foreach ($messages as $senderID => $messageID) {
+            $senderName = 'Objekt #' . $senderID . ' existiert nicht';
+            $rowColor = '#FFC0C0'; # red
+            if (@IPS_ObjectExists($senderID)) {
                 $senderName = IPS_GetName($senderID);
-                $description = $senderName;
-                $parentID = IPS_GetParent($senderID);
-                if (is_int($parentID) && $parentID != 0 && @IPS_ObjectExists($parentID)) {
-                    $description = IPS_GetName($parentID);
-                }
+                $rowColor = ''; # '#C0FFC0' # light green
             }
             switch ($messageID) {
                 case [10001]:
@@ -244,29 +195,17 @@ class Batterieueberwachung extends IPSModule
                     $messageDescription = 'VM_UPDATE';
                     break;
 
-                case [10803]:
-                    $messageDescription = 'EM_UPDATE';
-                    break;
-
                 default:
                     $messageDescription = 'keine Bezeichnung';
             }
             $formData->actions[1]->items[0]->values[] = [
-                'Description'         => $description,
-                'SenderID'            => $senderID,
-                'SenderName'          => $senderName,
-                'MessageID'           => $messageID,
-                'MessageDescription'  => $messageDescription];
+                'SenderID'                                              => $senderID,
+                'SenderName'                                            => $senderName,
+                'MessageID'                                             => $messageID,
+                'MessageDescription'                                    => $messageDescription,
+                'rowColor'                                              => $rowColor];
         }
-        // Configuration
-        $checkVersion = $this->CheckVersion();
-        if ($checkVersion) {
-            $formData->actions[0]->items[2] = [
-                'type'      => 'Button',
-                'caption'   => 'Neu einlesen',
-                'onClick'   => 'BAT_ReloadConfiguration($id);'];
-        }
-        // Blacklist
+        //Blacklist
         $blacklist = json_decode($this->ReadAttributeString('Blacklist'), true);
         if (!empty($blacklist)) {
             $text = 'erlaubt';
@@ -285,15 +224,15 @@ class Batterieueberwachung extends IPSModule
                 'Status'                => 'Alarm',
                 'Notification'          => $text];
         }
-        // Daily critical variables
+        //Daily critical variables
         $criticalVariables = json_decode($this->ReadAttributeString('CriticalStateVariables'), true)['dailyNotification'];
         if (!empty($criticalVariables)) {
             foreach ($criticalVariables as $variable) {
                 $actualStatus = $variable['actualStatus'];
                 if ($actualStatus == 1 || $actualStatus == 2) {
-                    $unicode = json_decode('"\u26a0\ufe0f"'); // warning
+                    $unicode = json_decode('"\u26a0\ufe0f"'); # warning
                     if ($actualStatus == 2) {
-                        $unicode = json_decode('"\u2757"'); // heavy_exclamation_mark
+                        $unicode = json_decode('"\u2757"'); # heavy_exclamation_mark
                     }
                     $formData->actions[4]->items[0]->values[] = [
                         'ActualStatus' => $unicode,
@@ -310,9 +249,9 @@ class Batterieueberwachung extends IPSModule
             foreach ($criticalVariables as $variable) {
                 $actualStatus = $variable['actualStatus'];
                 if ($actualStatus == 1 || $actualStatus == 2) {
-                    $unicode = json_decode('"\u26a0\ufe0f"'); // warning
+                    $unicode = json_decode('"\u26a0\ufe0f"'); # warning
                     if ($actualStatus == 2) {
-                        $unicode = json_decode('"\u2757"'); // heavy_exclamation_mark
+                        $unicode = json_decode('"\u2757"'); # heavy_exclamation_mark
                     }
                     $formData->actions[5]->items[0]->values[] = [
                         'ActualStatus' => $unicode,
@@ -326,7 +265,7 @@ class Batterieueberwachung extends IPSModule
         return json_encode($formData);
     }
 
-    //#################### Request action
+    #################### Request action
 
     public function RequestAction($Ident, $Value)
     {
@@ -344,20 +283,23 @@ class Batterieueberwachung extends IPSModule
         }
     }
 
-    //#################### Private
+    private function KernelReady()
+    {
+        $this->ApplyChanges();
+    }
+
+    #################### Private
 
     private function RegisterProperties(): void
     {
-        // Visibility
+        //Functions
         $this->RegisterPropertyBoolean('EnableMonitoring', true);
         $this->RegisterPropertyBoolean('EnableStatus', true);
         $this->RegisterPropertyBoolean('EnableBatteryReplacement', true);
         $this->RegisterPropertyBoolean('EnableBatteryList', true);
-
-        // Monitored variables
+        //Monitored variables
         $this->RegisterPropertyString('MonitoredVariables', '[]');
-
-        // Notification
+        //Notification
         $this->RegisterPropertyString('Location', '');
         $this->RegisterPropertyInteger('NotificationCenter', 0);
         $this->RegisterPropertyBoolean('ImmediateNotification', true);
@@ -380,26 +322,25 @@ class Batterieueberwachung extends IPSModule
         $this->RegisterPropertyBoolean('WeeklyNotificationUsePushNotification', true);
         $this->RegisterPropertyBoolean('WeeklyNotificationUseEmailNotification', true);
         $this->RegisterPropertyBoolean('WeeklyNotificationUseSMSNotification', true);
-        $this->RegisterPropertyInteger('NotificationScript', 0);
     }
 
     private function CreateProfiles(): void
     {
-        // Status
+        //Status
         $profileName = 'BAT.' . $this->InstanceID . '.Status';
         if (!IPS_VariableProfileExists($profileName)) {
             IPS_CreateVariableProfile($profileName, 0);
         }
         IPS_SetVariableProfileAssociation($profileName, 0, 'OK', 'Information', 0x00FF00);
         IPS_SetVariableProfileAssociation($profileName, 1, 'Alarm', 'Warning', 0xFF0000);
-        // Battery boolean
+        //Battery boolean
         $profile = 'BAT.Battery.Boolean';
         if (!IPS_VariableProfileExists($profile)) {
             IPS_CreateVariableProfile($profile, 0);
         }
         IPS_SetVariableProfileAssociation($profile, 0, 'OK', 'Information', 0x00FF00);
         IPS_SetVariableProfileAssociation($profile, 1, 'Batterie schwach', 'Battery', 0xFF0000);
-        // Battery integer
+        //Battery integer
         $profile = 'BAT.Battery.Integer';
         if (!IPS_VariableProfileExists($profile)) {
             IPS_CreateVariableProfile($profile, 1);
@@ -421,41 +362,31 @@ class Batterieueberwachung extends IPSModule
 
     private function RegisterVariables(): void
     {
-        // Monitoring
+        //Monitoring
         $this->RegisterVariableBoolean('Monitoring', 'Überwachung', '~Switch', 0);
         $this->EnableAction('Monitoring');
-        // Status
+        //Status
         $profile = 'BAT.' . $this->InstanceID . '.Status';
         $this->RegisterVariableBoolean('Status', 'Status', $profile, 1);
-        // Battery replacement
+        //Battery replacement
         $this->RegisterVariableInteger('BatteryReplacement', 'Batteriewechsel ID', '', 2);
         $this->EnableAction('BatteryReplacement');
         IPS_SetIcon($this->GetIDForIdent('BatteryReplacement'), 'Gear');
-        // Battery list
+        //Battery list
         $this->RegisterVariableString('BatteryList', 'Batterieliste', 'HTMLBox', 3);
         IPS_SetIcon($this->GetIDForIdent('BatteryList'), 'Battery');
     }
 
     private function SetOptions(): void
     {
-        // Monitoring
+        //Monitoring
         IPS_SetHidden($this->GetIDForIdent('Monitoring'), !$this->ReadPropertyBoolean('EnableMonitoring'));
-        // Status
+        //Status
         IPS_SetHidden($this->GetIDForIdent('Status'), !$this->ReadPropertyBoolean('EnableStatus'));
-        // Battery replacement
+        //Battery replacement
         IPS_SetHidden($this->GetIDForIdent('BatteryReplacement'), !$this->ReadPropertyBoolean('EnableBatteryReplacement'));
-        // Battery list
+        //Battery list
         IPS_SetHidden($this->GetIDForIdent('BatteryList'), !$this->ReadPropertyBoolean('EnableBatteryList'));
-    }
-
-    private function CheckVersion(): bool
-    {
-        $result = true;
-        $version = IPS_GetKernelVersion();
-        if ($version < 5.2) {
-            $result = false;
-        }
-        return $result;
     }
 
     private function UnregisterMessages(): void
@@ -474,9 +405,9 @@ class Batterieueberwachung extends IPSModule
 
     private function RegisterMessages(): void
     {
-        // Unregister first
+        //Unregister first
         $this->UnregisterMessages();
-        // Register variables
+        //Register variables
         $monitoredVariables = json_decode($this->ReadPropertyString('MonitoredVariables'));
         if (!empty($monitoredVariables)) {
             foreach ($monitoredVariables as $variable) {

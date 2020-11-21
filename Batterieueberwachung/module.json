@@ -2,11 +2,11 @@
   "id": "{3E34CE2F-B59B-8634-DF27-0293F2B700FF}",
   "name": "Batterieueberwachung",
   "type": 3,
-  "vendor": "NTUB",
-  "url": "https://github.com/ubittner/Batterieueberwachung",
+  "vendor": "Ulrich Bittner",
   "aliases": [
     "Batterieüberwachung"
   ],
+  "url": "https://github.com/ubittner/Batterieueberwachung",
   "parentRequirements": [],
   "childRequirements": [],
   "implemented": [],

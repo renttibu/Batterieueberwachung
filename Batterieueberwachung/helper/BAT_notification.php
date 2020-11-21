@@ -1,6 +1,25 @@
 <?php
 
-// Declare
+/** @noinspection PhpUnusedPrivateMethodInspection */
+/** @noinspection PhpUndefinedFunctionInspection */
+/** @noinspection PhpUnused */
+
+/*
+ * @module      Batterieueberwachung
+ *
+ * @prefix      BAT
+ *
+ * @file        BAT_notification.php
+ *
+ * @author      Ulrich Bittner
+ * @copyright   (c) 2020
+ * @license    	CC BY-NC-SA 4.0
+ *              https://creativecommons.org/licenses/by-nc-sa/4.0/
+ *
+ * @see         https://github.com/ubittner/Batterieueberwachung/
+ *
+ */
+
 declare(strict_types=1);
 
 trait BAT_notification
@@ -20,38 +39,36 @@ trait BAT_notification
      * @param bool $ResetCriticalVariables
      * false    = keep critical variables
      * true     = reset critical variables
+     *
+     * @throws Exception
      */
     public function TriggerDailyNotification(bool $ResetCriticalVariables): void
     {
         $this->SendDebug(__FUNCTION__, 'Die Methode wird ausgeführt. (' . microtime(true) . ')', 0);
         $this->SendDebug(__FUNCTION__, 'Parameter $ResetCriticalVariables = ' . json_encode($ResetCriticalVariables), 0);
         $this->SetDailyNotificationTimer();
-        // Monitoring must be activated
+        //Monitoring must be activated
         if (!$this->GetValue('Monitoring')) {
             $this->SendDebug(__FUNCTION__, 'Abbruch, Die Überwachung ist deaktiviert!', 0);
         }
-        // Daily notification must be activated
+        //Daily notification must be activated
         if (!$this->ReadPropertyBoolean('DailyNotification')) {
             $this->SendDebug(__FUNCTION__, 'Abbruch, Die tägliche Benachrichtigung ist deaktiviert!', 0);
         }
-        // Monitoring must be activated
+        //Monitoring must be activated
         if ($this->GetValue('Monitoring')) {
-            // Daily notification must be activated
+            //Daily notification must be activated
             if ($this->ReadPropertyBoolean('DailyNotification')) {
-                // Notification center must be valid
+                //Notification center must be valid
                 $notificationCenter = $this->ReadPropertyInteger('NotificationCenter');
                 if ($notificationCenter != 0 && IPS_ObjectExists($notificationCenter)) {
-                    if (IPS_GetInstance($notificationCenter)['ModuleInfo']['ModuleID'] != self::NOTIFICATION_CENTER_GUID) {
-                        $this->SendDebug(__FUNCTION__, 'Abbruch, Die Benachrichtigungszentrale ist ungültig!', 0);
-                        return;
-                    }
                     $this->SendDebug(__FUNCTION__, 'Die tägliche Benachrichtigung wird erstellt, Benachrichtigungen werden versendet.', 0);
                     $notification = true;
-                    $unicode = json_decode('"\ud83d\udfe2"'); // green_circle
+                    $unicode = json_decode('"\ud83d\udfe2"'); # green_circle
                     $text = 'Batterieüberwachung OK!';
                     $actualStatus = $this->GetValue('Status');
                     if ($actualStatus) {
-                        $unicode = json_decode('"\ud83d\udd34"'); // red_circle
+                        $unicode = json_decode('"\ud83d\udd34"'); # red_circle
                         $text = 'Alarm Batterieüberwachung!';
                     }
                     if (!$actualStatus && $this->ReadPropertyBoolean('DailyNotificationOnlyOnAlarm')) {
@@ -60,22 +77,22 @@ trait BAT_notification
                     if ($notification) {
                         $location = $this->ReadPropertyString('Location');
                         $timeStamp = date('d.m.Y, H:i:s');
-                        // Push notification
+                        //Push notification
                         if ($this->ReadPropertyBoolean('DailyNotificationUsePushNotification')) {
                             $pushTitle = substr($location, 0, 32);
                             $pushText = "\n" . $text . "\n" . $timeStamp . ' ' . $unicode;
-                            @BENA_SendPushNotification($notificationCenter, $pushTitle, $pushText, 4);
+                            @BZ_SendPushNotification($notificationCenter, $pushTitle, $pushText, 4);
                         }
-                        // Email notification
+                        //Email notification
                         if ($this->ReadPropertyBoolean('DailyNotificationUseEmailNotification')) {
                             $emailSubject = 'Batterieüberwachung ' . $location . ', Tagesbericht vom ' . $timeStamp;
                             $emailText = $this->CreateEmailReportText(1);
-                            @BENA_SendEMailNotification($notificationCenter, $emailSubject, $emailText, 4);
+                            @BZ_SendEMailNotification($notificationCenter, $emailSubject, $emailText, 4);
                         }
-                        // SMS Notification
+                        //SMS Notification
                         if ($this->ReadPropertyBoolean('DailyNotificationUseSMSNotification')) {
                             $smsText = $location . "\n" . $text . "\n" . $timeStamp . ' ' . $unicode;
-                            @BENA_SendSMSNotification($notificationCenter, $smsText, 4);
+                            @BZ_SendSMSNotification($notificationCenter, $smsText, 4);
                         }
                     }
                 }
@@ -106,6 +123,8 @@ trait BAT_notification
      * @param bool $ResetCriticalVariables
      * false    = keep critical variables
      * true     = reset critical variables
+     *
+     * @throws Exception
      */
     public function TriggerWeeklyNotification(bool $CheckDay, bool $ResetCriticalVariables): void
     {
@@ -113,35 +132,31 @@ trait BAT_notification
         $this->SendDebug(__FUNCTION__, 'Parameter $CheckDay = ' . json_encode($CheckDay), 0);
         $this->SendDebug(__FUNCTION__, 'Parameter $ResetCriticalVariables = ' . json_encode($ResetCriticalVariables), 0);
         $this->SetWeeklyNotificationTimer();
-        // Monitoring must be activated
+        //Monitoring must be activated
         if (!$this->GetValue('Monitoring')) {
             $this->SendDebug(__FUNCTION__, 'Abbruch, Die Überwachung ist deaktiviert!', 0);
         }
-        // Weekly notification must be activated
+        //Weekly notification must be activated
         if (!$this->ReadPropertyBoolean('WeeklyNotification')) {
             $this->SendDebug(__FUNCTION__, 'Abbruch, Die tägliche Benachrichtigung ist deaktiviert!', 0);
         }
-        // Check weekday
+        //Check weekday
         $weekday = date('w');
         if ($weekday == $this->ReadPropertyInteger('WeeklyNotificationDay') || !$CheckDay) {
             // Monitoring must be activated
             if ($this->GetValue('Monitoring')) {
-                // Weekly notification must be activated
+                //Weekly notification must be activated
                 if ($this->ReadPropertyBoolean('WeeklyNotification')) {
-                    // Notification center must be valid
+                    //Notification center must be valid
                     $notificationCenter = $this->ReadPropertyInteger('NotificationCenter');
                     if ($notificationCenter != 0 && IPS_ObjectExists($notificationCenter)) {
-                        if (IPS_GetInstance($notificationCenter)['ModuleInfo']['ModuleID'] != self::NOTIFICATION_CENTER_GUID) {
-                            $this->SendDebug(__FUNCTION__, 'Abbruch, Die Benachrichtigungszentrale ist ungültig!', 0);
-                            return;
-                        }
                         $this->SendDebug(__FUNCTION__, 'Die wöchentliche Benachrichtigung wird erstellt, Benachrichtigungen werden versendet.', 0);
                         $notification = true;
-                        $unicode = json_decode('"\ud83d\udfe2"'); // green_circle
+                        $unicode = json_decode('"\ud83d\udfe2"'); # green_circle
                         $text = 'Batterieüberwachung OK!';
                         $actualStatus = $this->GetValue('Status');
                         if ($actualStatus) {
-                            $unicode = json_decode('"\ud83d\udd34"'); // red_circle
+                            $unicode = json_decode('"\ud83d\udd34"'); # red_circle
                             $text = 'Alarm Batterieüberwachung!';
                         }
                         if (!$actualStatus && $this->ReadPropertyBoolean('WeeklyNotificationOnlyOnAlarm')) {
@@ -150,22 +165,22 @@ trait BAT_notification
                         if ($notification) {
                             $location = $this->ReadPropertyString('Location');
                             $timeStamp = date('d.m.Y, H:i:s');
-                            // Push notification
+                            //Push notification
                             if ($this->ReadPropertyBoolean('WeeklyNotificationUsePushNotification')) {
                                 $pushTitle = substr($location, 0, 32);
                                 $pushText = "\n" . $text . "\n" . $timeStamp . ' ' . $unicode;
-                                @BENA_SendPushNotification($notificationCenter, $pushTitle, $pushText, 4);
+                                @BZ_SendPushNotification($notificationCenter, $pushTitle, $pushText, 4);
                             }
-                            // Email notification
+                            //Email notification
                             if ($this->ReadPropertyBoolean('WeeklyNotificationUseEmailNotification')) {
                                 $emailSubject = 'Batterieüberwachung ' . $location . ', Wochenbericht vom ' . $timeStamp;
                                 $emailText = $this->CreateEmailReportText(2);
-                                @BENA_SendEMailNotification($notificationCenter, $emailSubject, $emailText, 4);
+                                @BZ_SendEMailNotification($notificationCenter, $emailSubject, $emailText, 4);
                             }
-                            // SMS Notification
+                            //SMS Notification
                             if ($this->ReadPropertyBoolean('WeeklyNotificationUseSMSNotification')) {
                                 $smsText = $location . "\n" . $text . "\n" . $timeStamp . ' ' . $unicode;
-                                @BENA_SendSMSNotification($notificationCenter, $smsText, 4);
+                                @BZ_SendSMSNotification($notificationCenter, $smsText, 4);
                             }
                         }
                     }
@@ -187,7 +202,7 @@ trait BAT_notification
         $this->WriteAttributeString('CriticalStateVariables', json_encode($criticalStateVariables));
     }
 
-    //#################### Private
+    #################### Private
 
     /**
      * Triggers the immediate notification.
@@ -195,31 +210,27 @@ trait BAT_notification
     private function TriggerImmediateNotification(): void
     {
         $this->SendDebug(__FUNCTION__, 'Die Methode wird ausgeführt. (' . microtime(true) . ')', 0);
-        // Monitoring must be activated
+        //Monitoring must be activated
         if (!$this->GetValue('Monitoring')) {
             $this->ResetCriticalVariablesForImmediateNotification();
             $this->SendDebug(__FUNCTION__, 'Abbruch, Die Überwachung ist deaktiviert!', 0);
             return;
         }
-        // Immediate notification must be activated
+        //Immediate notification must be activated
         if (!$this->ReadPropertyBoolean('ImmediateNotification')) {
             $this->ResetCriticalVariablesForImmediateNotification();
             $this->SendDebug(__FUNCTION__, 'Abbruch, Die sofortige Benachrichtigung ist deaktiviert!', 0);
             return;
         }
-        // Notification center must be valid
+        //Notification center must be valid
         $notificationCenter = $this->ReadPropertyInteger('NotificationCenter');
         if ($notificationCenter != 0 && IPS_ObjectExists($notificationCenter)) {
-            if (IPS_GetInstance($notificationCenter)['ModuleInfo']['ModuleID'] != self::NOTIFICATION_CENTER_GUID) {
-                $this->SendDebug(__FUNCTION__, 'Abbruch, Die Benachrichtigungszentrale ist ungültig!', 0);
-                return;
-            }
             $this->SendDebug(__FUNCTION__, 'Die sofortige Benachrichtigung wird erstellt, Benachrichtigungen werden versendet.', 0);
-            $unicode = json_decode('"\ud83d\udfe2"'); // green_circle
+            $unicode = json_decode('"\ud83d\udfe2"'); # green_circle
             $text = 'Batterieüberwachung OK!';
             $actualStatus = $this->GetValue('Status');
             if ($actualStatus) {
-                $unicode = json_decode('"\ud83d\udd34"'); // red_circle
+                $unicode = json_decode('"\ud83d\udd34"'); # red_circle
                 $text = 'Alarm Batterieüberwachung!';
             }
             if (!$actualStatus && $this->ReadPropertyBoolean('ImmediateNotificationOnlyOnAlarm')) {
@@ -244,22 +255,22 @@ trait BAT_notification
             }
             $location = $this->ReadPropertyString('Location');
             $timeStamp = date('d.m.Y, H:i:s');
-            // Push notification
+            //Push notification
             if ($this->ReadPropertyBoolean('ImmediateNotificationUsePushNotification')) {
                 $pushTitle = substr($location, 0, 32);
                 $pushText = "\n" . $text . "\n" . $timeStamp . ' ' . $unicode;
-                @BENA_SendPushNotification($notificationCenter, $pushTitle, $pushText, 4);
+                @BZ_SendPushNotification($notificationCenter, $pushTitle, $pushText, 4);
             }
             // Email notification
             if ($this->ReadPropertyBoolean('ImmediateNotificationUseEmailNotification')) {
                 $emailSubject = 'Batterieüberwachung ' . $location . ', Sofortige Benachrichtigung vom ' . $timeStamp;
                 $emailText = $this->CreateEmailReportText(0);
-                @BENA_SendEMailNotification($notificationCenter, $emailSubject, $emailText, 4);
+                @BZ_SendEMailNotification($notificationCenter, $emailSubject, $emailText, 4);
             }
             // SMS Notification
             if ($this->ReadPropertyBoolean('ImmediateNotificationUseSMSNotification')) {
                 $smsText = $location . "\n" . $text . "\n" . $timeStamp . ' ' . $unicode;
-                @BENA_SendSMSNotification($notificationCenter, $smsText, 4);
+                @BZ_SendSMSNotification($notificationCenter, $smsText, 4);
             }
             $this->WriteAttributeString('Blacklist', json_encode($blacklist));
             $this->ResetCriticalVariablesForImmediateNotification();
@@ -285,6 +296,8 @@ trait BAT_notification
      * 2    = weekly notification
      *
      * @return string
+     *
+     * @throws Exception
      */
     private function CreateEmailReportText(int $NotificationType): string
     {
@@ -292,39 +305,39 @@ trait BAT_notification
         $this->SendDebug(__FUNCTION__, 'Parameter $NotificationType = ' . json_encode($NotificationType), 0);
         $criticalStateVariables = json_decode($this->ReadAttributeString('CriticalStateVariables'), true);
         switch ($NotificationType) {
-            // Immediate notification
+            //Immediate notification
             case 0:
                 $criticalVariables = $criticalStateVariables['immediateNotification'];
                 break;
 
-            // Daily notification
+            //Daily notification
             case 1:
                 $criticalVariables = $criticalStateVariables['dailyNotification'];
                 break;
 
-            // Weekly notification
+            //Weekly notification
             case 2:
                 $criticalVariables = $criticalStateVariables['weeklyNotification'];
                 break;
 
         }
         $statusValue = $this->GetValue('Status');
-        $unicode = json_decode('"\u2705"'); // white_check_mark
+        $unicode = json_decode('"\u2705"'); # white_check_mark
         if ($statusValue) {
-            $unicode = json_decode('"\ud83d\udea8"'); // rotating_light
+            $unicode = json_decode('"\ud83d\udea8"'); # rotating_light
         }
         $statusText = GetValueFormatted($this->GetIDForIdent('Status'));
         $text = "Aktueller Batteriestatus:\n\n" . $unicode . ' ' . $statusText . "\n";
-        // Variables with a critical state exist
+        //Variables with a critical state exist
         if (!empty($criticalVariables)) {
-            // Sort variables by name
+            //Sort variables by name
             usort($criticalVariables, function ($a, $b)
             {
                 return $a['name'] <=> $b['name'];
             });
-            // Rebase array
+            //Rebase array
             $criticalVariables = array_values($criticalVariables);
-            // Update overdue first
+            //Update overdue first
             $updateOverviewAmount = 0;
             foreach ($criticalVariables as $variable) {
                 if ($variable['actualStatus'] == 2) {
@@ -332,7 +345,7 @@ trait BAT_notification
                 }
             }
             if ($updateOverviewAmount > 0) {
-                $unicode = json_decode('"\u2757"'); // heavy_exclamation_mark
+                $unicode = json_decode('"\u2757"'); # heavy_exclamation_mark
                 $text .= "\n\n\n\n";
                 $text .= "Überfällige Aktualisierung:\n\n";
                 foreach ($criticalVariables as $variable) {
@@ -341,7 +354,7 @@ trait BAT_notification
                     }
                 }
             }
-            // Low battery next
+            //Low battery next
             $lowBatteryAmount = 0;
             foreach ($criticalVariables as $variable) {
                 if ($variable['actualStatus'] == 1) {
@@ -349,7 +362,7 @@ trait BAT_notification
                 }
             }
             if ($lowBatteryAmount > 0) {
-                $unicode = json_decode('"\u26a0\ufe0f"'); // warning
+                $unicode = json_decode('"\u26a0\ufe0f"'); # warning
                 $text .= "\n\n\n\n";
                 $text .= "Schwache Batterie:\n\n";
                 foreach ($criticalVariables as $variable) {
@@ -359,7 +372,7 @@ trait BAT_notification
                 }
             }
         }
-        // Battery OK
+        //Battery OK
         $monitoredVariables = json_decode($this->ReadPropertyString('MonitoredVariables'), true);
         if (!empty($monitoredVariables)) {
             usort($monitoredVariables, function ($a, $b)
@@ -372,7 +385,7 @@ trait BAT_notification
             foreach ($monitoredVariables as $variable) {
                 $id = $variable['ID'];
                 if ($id != 0 && IPS_ObjectExists($id)) {
-                    // Check low battery
+                    //Check low battery
                     $lowBattery = true;
                     $checkBattery = false;
                     if ($variable['CheckBattery']) {
@@ -385,7 +398,7 @@ trait BAT_notification
                     } else {
                         $lowBattery = false;
                     }
-                    // Check update overdue
+                    //Check update overdue
                     $updateOverdue = true;
                     $checkUpdate = false;
                     if ($variable['CheckUpdate']) {
@@ -408,14 +421,14 @@ trait BAT_notification
                 }
             }
             if ($variableAmount > 0) {
-                $unicode = json_decode('"\u2705"'); // white_check_mark
+                $unicode = json_decode('"\u2705"'); # white_check_mark
                 $text .= "\n\n\n\n";
                 $text .= "Batterie OK:\n\n";
                 $timeStamp = date('d.m.Y, H:i:s');
                 foreach ($monitoredVariables as $variable) {
                     $id = $variable['ID'];
                     if ($id != 0 && IPS_ObjectExists($id)) {
-                        // Check low battery
+                        //Check low battery
                         $lowBattery = true;
                         if ($variable['CheckBattery']) {
                             $actualValue = boolval(GetValue($id));
@@ -426,7 +439,7 @@ trait BAT_notification
                         } else {
                             $lowBattery = false;
                         }
-                        // Check update overdue
+                        //Check update overdue
                         $updateOverdue = true;
                         if ($variable['CheckUpdate']) {
                             $now = time();
@@ -444,9 +457,9 @@ trait BAT_notification
                     }
                 }
             }
-            // Disabled monitoring is last
+            //Disabled monitoring is last
             if ($disabledVariableAmount > 0) {
-                $unicode = json_decode('"\ud83d\udeab"'); // no_entry_sign
+                $unicode = json_decode('"\ud83d\udeab"'); # no_entry_sign
                 $text .= "\n\n\n\n";
                 $text .= "Keine Überwachung:\n\n";
                 $timeStamp = date('d.m.Y, H:i:s');
