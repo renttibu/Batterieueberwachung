@@ -363,17 +363,17 @@ class Batterieueberwachung extends IPSModule
     private function RegisterVariables(): void
     {
         //Monitoring
-        $this->RegisterVariableBoolean('Monitoring', 'Überwachung', '~Switch', 0);
+        $this->RegisterVariableBoolean('Monitoring', 'Überwachung', '~Switch', 10);
         $this->EnableAction('Monitoring');
         //Status
         $profile = 'BAT.' . $this->InstanceID . '.Status';
-        $this->RegisterVariableBoolean('Status', 'Status', $profile, 1);
+        $this->RegisterVariableBoolean('Status', 'Status', $profile, 20);
         //Battery replacement
-        $this->RegisterVariableInteger('BatteryReplacement', 'Batteriewechsel ID', '', 2);
+        $this->RegisterVariableInteger('BatteryReplacement', 'Batteriewechsel ID', '', 30);
         $this->EnableAction('BatteryReplacement');
         IPS_SetIcon($this->GetIDForIdent('BatteryReplacement'), 'Gear');
         //Battery list
-        $this->RegisterVariableString('BatteryList', 'Batterieliste', 'HTMLBox', 3);
+        $this->RegisterVariableString('BatteryList', 'Batterieliste', 'HTMLBox', 40);
         IPS_SetIcon($this->GetIDForIdent('BatteryList'), 'Battery');
     }
 
